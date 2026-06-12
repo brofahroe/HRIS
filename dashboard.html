@@ -1,0 +1,1826 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Dashboard - Karyawan</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Playfair+Display:wght@700;800&display=swap');
+
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --primary:#B63A29;--primary-dark:#8A2C1F;--primary-light:#FCE8E6;
+  --accent:#E25B45;--success:#10b981;--danger:#ef4444;--warning:#f59e0b;
+  --bg-color:#FDF8F3;--text-main:#3E2723;--text-muted:#6D4C41;
+  --gray-50:#f8fafc;--gray-100:#f1f5f9;--gray-200:#e2e8f0;
+  --gray-400:#94a3b8;--gray-600:#475569;--gray-700:#334155;--gray-800:#1e293b;
+  --white:#ffffff;--shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,.1);--radius:16px;--radius-sm:10px;
+}
+body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--gray-800);color:var(--text-main);min-height:100vh;margin:0;}
+
+/* SIDEBAR & LAYOUT */
+.layout{min-height:100vh;width:100%;max-width:1080px;background:var(--bg-color);position:relative;overflow-x:hidden;box-shadow:0 0 40px rgba(0,0,0,.3);margin:0 auto;}
+.sidebar{
+  width:260px;background:var(--gray-800);color:white;
+  display:flex;flex-direction:column;position:absolute;
+  top:0;left:0;height:100%;z-index:100;overflow-y:auto;
+  transition:.3s;
+  transform:translateX(-260px);
+}
+.sidebar.mobile-open{transform:translateX(0);}
+
+.sidebar-header{padding:24px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08);}
+.sidebar-logo{display:flex;align-items:center;gap:12px;margin-bottom:4px;}
+.sidebar-logo-icon{width:40px;height:40px;background:transparent;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.sidebar-company{font-size:14px;font-weight:700;}
+.sidebar-sub{font-size:11px;color:rgba(255,255,255,.5);font-weight:400;}
+.btn-close-sidebar{display:block;background:rgba(255,255,255,.1);border:none;color:white;padding:6px;border-radius:8px;cursor:pointer;}
+.btn-close-sidebar svg{width:20px;height:20px;display:block;}
+
+.sidebar-menu{padding:12px 12px;flex:1;}
+.menu-section{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.3);padding:12px 8px 8px;}
+.menu-item-sidebar{
+  display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;
+  cursor:pointer;transition:.15s;margin-bottom:2px;font-size:13px;font-weight:600;
+  color:rgba(255,255,255,.65);
+}
+.menu-item-sidebar:hover{background:rgba(255,255,255,.08);color:white;}
+.menu-item-sidebar.active{background:var(--primary);color:white;box-shadow:0 4px 12px rgba(182,58,41,.4);}
+.menu-item-sidebar svg{width:18px;height:18px;flex-shrink:0;}
+/* MAIN & TOPBAR */
+.main{min-height:100vh;transition:.3s;width:100%;}
+.main.full{margin-left:0;}
+.topbar{
+  background:var(--white);border-bottom:1px solid var(--gray-200);
+  padding:14px 16px;display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:50;box-shadow:var(--shadow-sm);
+  width:100%;max-width:1080px;
+}
+.topbar-left{display:flex;align-items:center;gap:12px;}
+.btn-menu-toggle{background:none;border:1.5px solid var(--gray-200);padding:7px;border-radius:8px;cursor:pointer;color:var(--gray-600);}
+.btn-menu-toggle svg{width:18px;height:18px;display:block;}
+
+.main-content{width:100%;padding:20px 16px 100px;}
+
+/* GREETING */
+.greeting-card{
+  background:linear-gradient(135deg,var(--primary) 0%,var(--accent) 100%);
+  border-radius:20px;padding:24px;margin-bottom:20px;color:white;
+  position:relative;overflow:hidden;
+}
+.greeting-card::after{
+  content:'';position:absolute;top:-20px;right:-20px;
+  width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.08);
+}
+.greeting-card::before{
+  content:'';position:absolute;bottom:-30px;right:60px;
+  width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.05);
+}
+.greeting-name{font-family:'Playfair Display',serif;font-size:24px;font-weight:800;margin-bottom:4px;}
+.greeting-sub{font-size:13px;opacity:.9;}
+.greeting-meta{display:flex;gap:16px;margin-top:16px;}
+.meta-item{background:rgba(255,255,255,.15);padding:8px 14px;border-radius:10px;font-size:12px;}
+.meta-item strong{display:block;font-size:14px;font-weight:700;}
+
+/* STATUS CARD */
+.status-card{
+  background:var(--white);border-radius:var(--radius);padding:20px;
+  margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);
+}
+.status-title{font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:14px;text-transform:uppercase;letter-spacing:.5px;}
+.status-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.status-item{background:var(--gray-50);border-radius:var(--radius-sm);padding:14px;border:1px solid var(--gray-200);}
+.status-item .label{font-size:11px;color:var(--gray-400);font-weight:500;margin-bottom:6px;}
+.status-item .value{font-size:15px;font-weight:700;color:var(--gray-800);}
+.status-item .value.status-hadir{color:var(--success);}
+.status-item .value.status-terlambat{color:var(--warning);}
+.status-item .value.status-belum{color:var(--gray-400);}
+
+/* QUICK ACTION */
+.section-title{font-size:14px;font-weight:700;color:var(--gray-700);margin-bottom:12px;padding-left:2px;}
+.quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.action-btn{
+  background:var(--white);border:1.5px solid var(--gray-200);border-radius:var(--radius);
+  padding:20px 16px;cursor:pointer;text-align:center;transition:.2s;
+  display:flex;flex-direction:column;align-items:center;gap:10px;
+  font-family:inherit;
+}
+.action-btn:hover{border-color:var(--primary);box-shadow:0 4px 16px rgba(182,58,41,.12);}
+.action-btn:active{transform:scale(.98);}
+.action-btn.primary{background:var(--primary);border-color:var(--primary);color:white;}
+.action-btn.primary .action-icon{background:rgba(255,255,255,.2);}
+.action-btn.success{background:var(--success);border-color:var(--success);color:white;}
+.action-btn.success .action-icon{background:rgba(255,255,255,.2);}
+.action-icon{
+  width:48px;height:48px;border-radius:14px;background:var(--primary-light);
+  display:flex;align-items:center;justify-content:center;
+}
+.action-icon svg{width:24px;height:24px;color:var(--primary);}
+.action-btn.primary .action-icon svg,.action-btn.success .action-icon svg{color:white;}
+.action-label{font-size:13px;font-weight:700;}
+.action-btn.primary .action-label,.action-btn.success .action-label{color:white;}
+.action-label{color:var(--gray-700);}
+
+/* MENU GRID */
+.menu-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px;}
+.menu-item{
+  background:var(--white);border:1px solid var(--gray-200);border-radius:14px;
+  padding:16px 8px;text-align:center;cursor:pointer;transition:.2s;
+}
+.menu-item:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(182,58,41,.1);}
+.menu-icon{width:44px;height:44px;border-radius:12px;margin:0 auto 8px;display:flex;align-items:center;justify-content:center;}
+.menu-icon.blue{background:var(--primary-light);}
+.menu-icon.green{background:#dcfce7;}
+.menu-icon.orange{background:#fff7ed;}
+.menu-icon.purple{background:#f3e8ff;}
+.menu-icon.red{background:#fef2f2;}
+.menu-icon svg{width:22px;height:22px;}
+.menu-icon.blue svg{color:var(--primary);}
+.menu-icon.green svg{color:var(--success);}
+.menu-icon.orange svg{color:var(--warning);}
+.menu-icon.purple svg{color:#9333ea;}
+.menu-icon.red svg{color:var(--danger);}
+.menu-label{font-size:11px;font-weight:600;color:var(--gray-700);}
+
+/* TABLE */
+.data-table{width:100%;border-collapse:collapse;font-size:13px;}
+.data-table th{background:var(--gray-50);padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--gray-400);text-transform:uppercase;border-bottom:1px solid var(--gray-200);}
+.data-table td{padding:12px;border-bottom:1px solid var(--gray-100);color:var(--gray-700);}
+.data-table tr:last-child td{border-bottom:none;}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600;}
+.badge-success{background:#dcfce7;color:#166534;}
+.badge-warning{background:#fff7ed;color:#9a3412;}
+.badge-danger{background:#fef2f2;color:#991b1b;}
+.badge-gray{background:var(--gray-100);color:var(--gray-600);}
+.badge-blue{background:var(--primary-light);color:var(--primary-dark);}
+.empty-state{text-align:center;padding:40px 20px;color:var(--gray-400);}
+.empty-state svg{width:48px;height:48px;margin-bottom:12px;opacity:.4;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.active{display:flex;}
+.modal{background:var(--white);border-radius:24px 24px 0 0;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;padding:24px;animation:slideUp .3s ease;}
+@keyframes slideUp{from{transform:translateY(100%);}to{transform:translateY(0);}}
+.modal-handle{width:40px;height:4px;background:var(--gray-200);border-radius:4px;margin:0 auto 20px;}
+.modal-title{font-size:18px;font-weight:800;margin-bottom:20px;}
+
+/* FORMS */
+.form-group{margin-bottom:16px;}
+.form-label{display:block;font-size:13px;font-weight:600;color:var(--gray-600);margin-bottom:8px;}
+.form-label.required::after{content:' *';color:var(--danger);}
+.form-input,.form-select,.form-textarea{
+  width:100%;padding:12px 14px;border:2px solid var(--gray-200);border-radius:var(--radius-sm);
+  font-size:14px;font-family:inherit;color:var(--gray-800);background:var(--gray-50);
+  transition:.2s;outline:none;
+}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--primary);background:white;box-shadow:0 0 0 4px rgba(182,58,41,.1);}
+.form-textarea{resize:vertical;min-height:100px;}
+.char-count{font-size:11px;color:var(--gray-400);text-align:right;margin-top:4px;}
+
+/* GPS + CAMERA */
+.location-display{
+  background:var(--primary-light);border-radius:var(--radius-sm);padding:14px;
+  margin-bottom:16px;font-size:13px;
+}
+.location-display .coords{font-family:monospace;font-size:12px;color:var(--primary);margin-top:4px;}
+.location-status{display:flex;align-items:center;gap:8px;font-weight:600;color:var(--primary);}
+.location-status.out-of-range{color:var(--danger);}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--success);animation:pulse 1.5s infinite;}
+.dot.red{background:var(--danger);}
+@keyframes pulse{0%,100%{transform:scale(1);}50%{transform:scale(1.3);}}
+
+.camera-section{margin-bottom:16px;}
+.camera-preview{
+  width:100%;aspect-ratio:4/3;background:#000;border-radius:var(--radius-sm);overflow:hidden;position:relative;
+  display:flex;align-items:center;justify-content:center;
+}
+.camera-preview video,.camera-preview img{width:100%;height:100%;object-fit:cover;}
+.camera-placeholder{color:var(--gray-400);text-align:center;}
+.btn-capture{width:100%;margin-top:8px;padding:12px;background:var(--gray-800);color:white;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+.btn-retake{background:var(--gray-600);margin-top:6px;}
+
+/* BUTTONS */
+.btn{padding:13px 24px;border-radius:var(--radius-sm);font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;border:none;transition:.2s;width:100%;margin-top:8px;}
+.btn-primary{background:linear-gradient(135deg,var(--primary),var(--accent));color:white;}
+.btn-primary:hover{transform:translateY(-1px);box-shadow:0 4px 16px rgba(182,58,41,.35);}
+.btn-primary:disabled{opacity:.6;transform:none;cursor:not-allowed;}
+.btn-secondary{background:var(--gray-100);color:var(--gray-700);border:1.5px solid var(--gray-200);}
+.btn-danger{background:var(--danger);color:white;}
+
+/* TOAST */
+#toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--gray-800);color:white;padding:12px 24px;border-radius:100px;font-size:13px;font-weight:500;opacity:0;transition:.3s;z-index:9999;pointer-events:none;white-space:nowrap;}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+#toast.success{background:var(--success);}
+#toast.error{background:var(--danger);}
+
+.section-card{background:var(--white);border-radius:var(--radius);padding:20px;margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--gray-200);}
+
+.upload-area{border:2px dashed var(--gray-200);border-radius:var(--radius-sm);padding:24px;text-align:center;cursor:pointer;transition:.2s;}
+.upload-area:hover{border-color:var(--primary);background:var(--primary-light);}
+.upload-area input{display:none;}
+
+.lembur-total{background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:var(--radius-sm);padding:14px;text-align:center;margin-top:12px;}
+</style>
+<!-- Face API for Liveness Detection -->
+<script defer src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api/dist/face-api.js"></script>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+      <div class="sidebar-logo">
+        <div class="sidebar-logo-icon" style="overflow:hidden; padding:0; border-radius:12px;">
+          <img src="https://blogger.googleusercontent.com/img/b/R29vZ2xl/AVvXsEhmk5fJXcLUwu05H3sSol4HwHRIECnDzEVslvcTkCrqgwg7szZl9MrRgMmHYbtJZvs_zcrPq50PFpR-EdMKYA7FxOYPUk3iHlfIWbC4ueWLLqqOcXMzUop7sgAgP7zVtZfNK5H2pTju8H5zDNNZ4gNbUGi1FLeGY9ciyHwDSuBsM158VijpuzckaK_S1XI/s320/Batik%20Seng-03.png" alt="Logo" style="width:100%;height:100%;object-fit:contain;">
+        </div>
+        <div>
+          <div class="sidebar-company" id="navCompany">Absensi</div>
+          <div class="sidebar-sub">Dashboard Karyawan</div>
+        </div>
+      </div>
+      <button class="btn-close-sidebar" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div class="sidebar-menu">
+    <div class="menu-section">Menu Utama</div>
+    <div class="menu-item-sidebar active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span class="menu-text">Dashboard</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalRiwayat')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span class="menu-text">Riwayat Absensi</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalIzin')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+      <span class="menu-text">Izin / Sakit</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalLembur')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <span class="menu-text">Lembur</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalProfil')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="menu-text">Profil Saya</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalSlipGaji')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      <span class="menu-text">Slip Gaji</span>
+    </div>
+    <div class="menu-item-sidebar" onclick="openModal('modalKasbon')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+      <span class="menu-text">Kasbon / Pinjaman</span>
+    </div>
+    
+    <div class="menu-section">Sistem</div>
+    <div class="menu-item-sidebar" onclick="doLogout()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span class="menu-text">Keluar</span>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main" id="mainContent">
+
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <button class="btn-menu-toggle" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="topbar-right" style="display:flex;align-items:center;gap:12px;">
+      <div class="nav-time" id="navClock" style="font-size:13px;font-weight:600;color:var(--primary);background:var(--primary-light);padding:6px 12px;border-radius:20px;">--:--</div>
+      <button class="btn-logout" onclick="doLogout()" style="background:none;border:1.5px solid var(--gray-200);color:var(--gray-600);padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">Keluar</button>
+    </div>
+  </div>
+
+  <div class="main-content">
+
+  <div class="greeting-card" style="display: flex; justify-content: space-between; align-items: center; gap: 16px;">
+    <div style="flex: 1;">
+    <div class="greeting-name" id="greetingName">Selamat Datang</div>
+    <div class="greeting-sub" id="greetingDate">...</div>
+    <div class="greeting-meta">
+      <div class="meta-item">
+        <span>Jabatan</span>
+        <strong id="greetingJabatan">-</strong>
+      </div>
+      <div class="meta-item">
+        <span>Divisi</span>
+        <strong id="greetingDivisi">-</strong>
+      </div>
+    </div>
+    </div>
+    <div class="greeting-avatar" style="width: 72px; height: 72px; min-width: 72px; border-radius: 50%; overflow: hidden; border: 3px solid white; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white;">
+      <img id="greetingAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e2e8f0'%3E%3Cpath d='M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z' /%3E%3C/svg%3E" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">
+    </div>
+  </div>
+
+  <div class="status-card">
+    <div class="status-title">📊 Status Hari Ini</div>
+    <div class="status-grid">
+      <div class="status-item">
+        <div class="label">Status Kehadiran</div>
+        <div class="value" id="statusKehadiran">Memuat...</div>
+      </div>
+      <div class="status-item">
+        <div class="label">Jam Masuk</div>
+        <div class="value" id="statusJamMasuk">-</div>
+      </div>
+      <div class="status-item">
+        <div class="label">Jam Pulang</div>
+        <div class="value" id="statusJamPulang">-</div>
+      </div>
+      <div class="status-item">
+        <div class="label">Total Jam Kerja</div>
+        <div class="value" id="statusTotalJam">-</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">🕒 Tipe Kehadiran</div>
+  <div class="form-group" style="margin-bottom: 20px;">
+    <select class="form-select" id="shiftKerja" onchange="loadTodayStatus()">
+      <option value="Pagi">Pagi</option>
+      <option value="Sore">Sore</option>
+      <option value="Dinas Luar">Dinas Luar</option>
+      <option value="Pelatihan">Pelatihan</option>
+    </select>
+  </div>
+
+  <div class="section-title">⚡ Aksi Cepat</div>
+  <div class="quick-actions">
+    <button class="action-btn primary" id="btnAbsenMasuk" onclick="openModal('modalMasuk')">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+      </div>
+      <div class="action-label">Absen Masuk</div>
+    </button>
+    <button class="action-btn success" id="btnAbsenPulang" onclick="openModal('modalPulang')">
+      <div class="action-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      </div>
+      <div class="action-label">Absen Pulang</div>
+    </button>
+  </div>
+
+  <div class="section-title">📋 Menu</div>
+  <div class="menu-grid">
+    <div class="menu-item" onclick="openModal('modalRiwayat')">
+      <div class="menu-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      </div>
+      <div class="menu-label">Riwayat Absensi</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalIzin')">
+      <div class="menu-icon orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="menu-label">Izin / Sakit</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalLembur')">
+      <div class="menu-icon purple">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      </div>
+      <div class="menu-label">Lembur</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalRiwayatLembur')">
+      <div class="menu-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      </div>
+      <div class="menu-label">Riwayat Lembur</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalRiwayatIzin')">
+      <div class="menu-icon orange">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      </div>
+      <div class="menu-label">Riwayat Izin</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalProfil')">
+      <div class="menu-icon blue">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div class="menu-label">Profil Saya</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalSlipGaji')">
+      <div class="menu-icon green">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+      </div>
+      <div class="menu-label">Slip Gaji</div>
+    </div>
+    <div class="menu-item" onclick="openModal('modalKasbon')">
+      <div class="menu-icon red">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M12 12h.01"/><path d="M17 12h.01"/><path d="M7 12h.01"/></svg>
+      </div>
+      <div class="menu-label">Kasbon</div>
+    </div>
+  </div>
+    </div>
+  </div>
+  <div class="app-footer" style="text-align: center; font-size: 11px; font-weight: 500; color: var(--gray-400); padding: 20px; width: 100%; margin-top: auto;">
+    HRIS Ver 1.0.0 &copy; 2026 BatikSengguruh.com
+  </div>
+</div>
+</div>
+
+<div class="modal-overlay" id="modalMasuk">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📍 Absen Masuk</div>
+
+    <div class="location-display" id="locationDisplayMasuk">
+      <div class="location-status" id="locationStatusMasuk">
+        <div class="dot"></div> Mendapatkan lokasi GPS...
+      </div>
+      <div class="coords" id="locationCoordsMasuk"></div>
+      <div id="locationAddrMasuk" style="margin-top:6px;font-size:12px;color:#475569;"></div>
+    </div>
+
+    <div class="camera-section">
+      <div class="form-label required">Foto Selfie</div>
+      <div style="font-size:12px; color:var(--danger); font-weight:600; margin-bottom:8px;">* harus terlihat jelas wajah dan senyumnya</div>
+      <input type="file" id="fileInputMasuk" accept="image/*" capture="user" style="display:none;" onchange="handleFileChange(event, 'masuk')">
+      <div class="camera-preview" id="cameraPreviewMasuk">
+        <div class="camera-placeholder">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div style="font-size:13px;margin-top:8px;">Kamera belum aktif</div>
+        </div>
+      </div>
+      <button class="btn-capture" id="btnCaptureMasuk" onclick="capturePhoto('masuk')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        Ambil Foto
+      </button>
+      <button class="btn-capture btn-retake" id="btnRetakeMasuk" onclick="retakePhoto('masuk')" style="display:none;">
+        Foto Ulang
+      </button>
+    </div>
+
+    <button class="btn btn-primary" id="btnSubmitMasuk" onclick="submitAbsenMasuk()" disabled>
+      Kirim Absen Masuk
+    </button>
+    <button class="btn btn-secondary" onclick="closeModal('modalMasuk');stopCamera()">Batal</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalPulang">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">🏠 Absen Pulang</div>
+
+    <div class="location-display" id="locationDisplayPulang">
+      <div class="location-status" id="locationStatusPulang">
+        <div class="dot"></div> Mendapatkan lokasi GPS...
+      </div>
+      <div class="coords" id="locationCoordsPulang"></div>
+    </div>
+
+    <div class="camera-section">
+      <div class="form-label required">Foto Selfie Pulang</div>
+      <div style="font-size:12px; color:var(--danger); font-weight:600; margin-bottom:8px;">* harus terlihat jelas wajah dan senyumnya</div>
+      <input type="file" id="fileInputPulang" accept="image/*" capture="user" style="display:none;" onchange="handleFileChange(event, 'pulang')">
+      <div class="camera-preview" id="cameraPreviewPulang">
+        <div class="camera-placeholder">
+          <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <div style="font-size:13px;margin-top:8px;">Kamera belum aktif</div>
+        </div>
+      </div>
+      <button class="btn-capture" id="btnCapturePulang" onclick="capturePhoto('pulang')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg>
+        Ambil Foto
+      </button>
+      <button class="btn-capture btn-retake" id="btnRetakePulang" onclick="retakePhoto('pulang')" style="display:none;">Foto Ulang</button>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label required">Update Pekerjaan Hari Ini</label>
+      <textarea class="form-textarea" id="updatePekerjaan" placeholder="Contoh: Mewarna 50 Lembar pesanan RSUD Kepanhen..." oninput="updateCharCount()"></textarea>
+      <div class="char-count" id="charCount">0 / minimal 20 karakter</div>
+    </div>
+
+    <button class="btn btn-primary" id="btnSubmitPulang" onclick="submitAbsenPulang()" disabled>
+      Kirim Absen Pulang
+    </button>
+    <button class="btn btn-secondary" onclick="closeModal('modalPulang');stopCamera()">Batal</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalIzin">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📄 Pengajuan Izin / Sakit</div>
+
+    <div class="form-group">
+      <label class="form-label required">Jenis Pengajuan</label>
+      <select class="form-select" id="izinJenis" onchange="updateIzinLabel()">
+        <option value="">Pilih Jenis</option>
+        <option value="Izin">Izin</option>
+        <option value="Sakit">Sakit</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Tanggal Mulai</label>
+      <input type="date" class="form-input" id="izinTanggalMulai">
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Tanggal Selesai</label>
+      <input type="date" class="form-input" id="izinTanggalSelesai">
+    </div>
+    <div class="form-group">
+      <label class="form-label required" id="izinAlasanLabel">Alasan</label>
+      <textarea class="form-textarea" id="izinAlasan" placeholder="Jelaskan alasan izin Anda..." style="min-height:80px;"></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label" id="izinBuktiLabel">Foto Bukti (Opsional)</label>
+      <div class="upload-area" onclick="document.getElementById('izinFoto').click()">
+        <input type="file" id="izinFoto" accept="image/*" onchange="previewIzinFoto(event)">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2" style="margin-bottom:8px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <div id="izinFotoPreview" style="font-size:13px;color:#94a3b8;">Ketuk untuk upload foto</div>
+      </div>
+    </div>
+
+    <button class="btn btn-primary" id="btnSubmitIzin" onclick="submitIzin()">Kirim Pengajuan</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalIzin')">Batal</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalLembur">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">⏰ Pengajuan Lembur</div>
+    <div class="form-group">
+      <label class="form-label required">Tanggal</label>
+      <input type="date" class="form-input" id="lemburTanggal">
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Jam Mulai</label>
+      <input type="time" class="form-input" id="lemburJamMulai">
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Jam Selesai</label>
+      <input type="time" class="form-input" id="lemburJamSelesai">
+    </div>
+    <div class="form-group">
+      <label class="form-label required">Keterangan</label>
+      <textarea class="form-textarea" id="lemburKeterangan" placeholder="Jelaskan pekerjaan lembur..." style="min-height:80px;"></textarea>
+    </div>
+    <button class="btn btn-primary" id="btnSubmitLembur" onclick="submitLembur()">Kirim Pengajuan</button>
+    <button class="btn btn-secondary" onclick="closeModal('modalLembur')">Batal</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalRiwayat">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📅 Riwayat Absensi</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <select class="form-select" id="riwayatBulan" style="flex:1;">
+        <option value="">Semua Bulan</option>
+        <option value="1">Januari</option><option value="2">Februari</option>
+        <option value="3">Maret</option><option value="4">April</option>
+        <option value="5">Mei</option><option value="6">Juni</option>
+        <option value="7">Juli</option><option value="8">Agustus</option>
+        <option value="9">September</option><option value="10">Oktober</option>
+        <option value="11">November</option><option value="12">Desember</option>
+      </select>
+      <select class="form-select" id="riwayatTahun" style="flex:1;">
+        </select>
+      <button class="btn btn-primary" onclick="loadRiwayat()" style="width:auto;margin:0;padding:12px 16px;font-size:12px;">Cari</button>
+    </div>
+    <div id="riwayatTable">
+      <div class="empty-state"><div>Pilih bulan dan tahun untuk melihat riwayat</div></div>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modalRiwayat')" style="margin-top:12px;">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalKasbon">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💸 Pengajuan Kasbon</div>
+    
+    <div style="display:flex; gap:10px; margin-bottom:16px;">
+      <button class="btn btn-primary" id="btnTabKasbonBaru" onclick="switchKasbonTab('baru')" style="flex:1; margin:0;">Ajukan Kasbon</button>
+      <button class="btn btn-secondary" id="btnTabKasbonRiwayat" onclick="switchKasbonTab('riwayat')" style="flex:1; margin:0;">Riwayat</button>
+    </div>
+
+    <div id="kasbonBaruSection">
+      <div class="form-group">
+        <label class="form-label required">Nominal (Rp)</label>
+        <input type="number" class="form-input" id="kasbonNominal" placeholder="Contoh: 500000" min="10000">
+      </div>
+      <div class="form-group">
+        <label class="form-label required">Alasan</label>
+        <textarea class="form-textarea" id="kasbonAlasan" placeholder="Jelaskan alasan pengajuan kasbon..."></textarea>
+      </div>
+      <button class="btn btn-primary" id="btnSubmitKasbon" onclick="submitKasbon()">Ajukan Kasbon</button>
+    </div>
+
+    <div id="kasbonRiwayatSection" style="display:none;">
+      <div id="riwayatKasbonList">
+        <div class="empty-state">Memuat riwayat...</div>
+      </div>
+    </div>
+    
+    <button class="btn btn-secondary" onclick="closeModal('modalKasbon')">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalRiwayatLembur">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📊 Riwayat Lembur</div>
+    <div id="riwayatLemburList">
+      <div class="empty-state">Memuat data...</div>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modalRiwayatLembur')" style="margin-top:12px;">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalRiwayatIzin">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">📋 Riwayat Izin / Sakit</div>
+    <div id="riwayatIzinList">
+      <div class="empty-state">Memuat data...</div>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modalRiwayatIzin')" style="margin-top:12px;">Tutup</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="modalProfil">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">👤 Profil Saya</div>
+    
+    <div style="text-align: center; margin-bottom: 20px;">
+      <div style="width: 96px; height: 96px; border-radius: 50%; overflow: hidden; margin: 0 auto 12px; border: 3px solid var(--primary-light); box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: var(--white);">
+        <img id="modalAvatar" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e2e8f0'%3E%3Cpath d='M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z' /%3E%3C/svg%3E" alt="Avatar" style="width:100%; height:100%; object-fit:cover;">
+      </div>
+      
+      <div id="cameraAreaProfil" style="display:none; margin-bottom:12px;">
+        <div class="camera-preview" id="cameraPreviewProfil" style="height: 180px; max-width: 240px; margin: 0 auto; border-radius: 12px; overflow: hidden; background: #000; position: relative;">
+        </div>
+        <div style="margin-top: 12px; display:flex; justify-content:center; gap:8px;">
+          <button class="btn btn-primary btn-sm" onclick="captureProfileCamera()" style="width:auto;">Ambil Foto</button>
+          <button class="btn btn-secondary btn-sm" onclick="stopProfileCamera()" style="width:auto;">Batal</button>
+        </div>
+      </div>
+
+      <div id="profilActionButtons" style="display:flex; justify-content:center; gap:8px;">
+        <input type="file" id="fileProfil" accept="image/*" style="display:none;" onchange="handleProfilFile(event)">
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileProfil').click()" style="width:auto; padding:8px 16px;">Pilih File</button>
+        <button class="btn btn-primary btn-sm" onclick="startProfileCamera()" style="width:auto; padding:8px 16px;">Buka Kamera</button>
+      </div>
+    </div>
+
+    <div id="profilContent" style="margin-bottom:20px;"></div>
+
+    <div style="border-top:1px solid var(--gray-200);padding-top:20px;margin-top:4px;">
+      <div class="form-label" style="font-size:15px;font-weight:700;margin-bottom:12px;">Ganti Password <span style="font-size:12px; font-weight:normal; color:var(--gray-500);">(Opsional)</span></div>
+      <div class="form-group">
+        <label class="form-label">Password Lama</label>
+        <input type="password" class="form-input" id="pwLama" placeholder="Password saat ini">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Password Baru</label>
+        <input type="password" class="form-input" id="pwBaru" placeholder="Password baru">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Konfirmasi Password</label>
+        <input type="password" class="form-input" id="pwKonfirmasi" placeholder="Ulangi password baru">
+      </div>
+      <button class="btn btn-primary" onclick="gantiPassword()">Simpan Password</button>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modalProfil')" style="margin-top:8px;">Tutup</button>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ====== MODAL SLIP GAJI ====== -->
+<div class="modal-overlay" id="modalSlipGaji">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💰 Slip Gaji</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <select class="form-select" id="slipBulan" style="flex:1;">
+        <option value="1">Januari</option><option value="2">Februari</option>
+        <option value="3">Maret</option><option value="4">April</option>
+        <option value="5">Mei</option><option value="6">Juni</option>
+        <option value="7">Juli</option><option value="8">Agustus</option>
+        <option value="9">September</option><option value="10">Oktober</option>
+        <option value="11">November</option><option value="12">Desember</option>
+      </select>
+      <select class="form-select" id="slipTahun" style="flex:1;"></select>
+      <button class="btn btn-primary" onclick="loadSlipGaji()" style="width:auto;margin:0;padding:12px 16px;font-size:12px;">Lihat</button>
+    </div>
+    <div id="slipGajiContent">
+      <div class="empty-state">Pilih bulan dan tahun, lalu klik Lihat</div>
+    </div>
+    <button class="btn btn-secondary" onclick="closeModal('modalSlipGaji')" style="margin-top:12px;">Tutup</button>
+  </div>
+</div>
+
+<script src="gas-polyfill.js"></script><script>
+let SESSION = null;
+let gpsData = { masuk: null, pulang: null };
+let fotoData = { masuk: null, pulang: null };
+let stream = null;
+let videoEl = null;
+let activeCamera = null;
+
+// ===================== INIT =====================
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  if (window.innerWidth <= 768) {
+    sb.classList.toggle('mobile-open');
+  } else {
+    sb.classList.toggle('collapsed');
+    document.getElementById('mainContent').classList.toggle('full');
+  }
+}
+
+window.onload = function() {
+  let raw = null;
+  const queryToken = new URLSearchParams(window.location.search).get('token');
+  if (window.location.hash && window.location.hash.length > 1) {
+    try {
+      raw = decodeURIComponent(window.location.hash.substring(1));
+      try { sessionStorage.setItem('absSession', raw); } catch(e) {}
+    } catch(e) { raw = null; }
+  }
+  try { if (!raw) raw = sessionStorage.getItem('absSession'); } catch(e) {}
+  if (!raw && queryToken) raw = JSON.stringify({ token: queryToken });
+  try {
+    SESSION = JSON.parse(raw || '{}');
+  } catch (e) {
+    SESSION = null;
+  }
+  if (!SESSION || !SESSION.token) {
+    google.script.run.withSuccessHandler(function(html) {
+      document.open(); document.write(html); document.close();
+      setTimeout(function() { if (typeof window.onload === 'function') window.onload(); }, 100);
+    }).getHtmlPage('login', null);
+    return;
+  }
+  cleanSensitiveUrl();
+
+  // Jalankan render tahun dinamis & pengambilan data database utama
+  generateYearsOption();
+  startClock();
+  setTodayDates();
+  refreshDashboardData();
+};
+
+function cleanSensitiveUrl() {
+  try {
+    const url = new URL(window.location.href);
+    url.searchParams.delete('token');
+    const cleanSearch = url.searchParams.toString();
+    history.replaceState(null, '', url.pathname + (cleanSearch ? '?' + cleanSearch : ''));
+  } catch (e) {}
+}
+
+function refreshDashboardData() {
+  loadPublicSettings();
+  loadProfile();
+  loadTodayStatus(true);
+  generateYearsSlipGaji();
+}
+
+function generateYearsOption() {
+  const currentYear = new Date().getFullYear();
+  const selectTahun = document.getElementById('riwayatTahun');
+  if (selectTahun) {
+    selectTahun.innerHTML = '';
+    // Menghasilkan rentang pilihan: Tahun Ini hingga 2 tahun sebelumnya
+    for (let i = 0; i < 3; i++) {
+      let yr = currentYear - i;
+      let opt = document.createElement('option');
+      opt.value = yr;
+      opt.textContent = yr;
+      selectTahun.appendChild(opt);
+    }
+  }
+}
+
+function setTodayDates() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('izinTanggalMulai').value = today;
+  document.getElementById('izinTanggalSelesai').value = today;
+  document.getElementById('lemburTanggal').value = today;
+}
+
+function startClock() {
+  function tick() {
+    const now = new Date();
+    document.getElementById('navClock').textContent =
+      now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+  }
+  tick();
+  setInterval(tick, 1000);
+}
+
+function loadPublicSettings() {
+  google.script.run.withSuccessHandler(function(d) {
+    if (d && d.companyName) {
+      document.getElementById('navCompany').textContent = d.companyName;
+      document.title = d.companyName + ' - Dashboard';
+    }
+  }).getPublicSettings();
+}
+
+// ===================== PROFILE =====================
+function loadProfile() {
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r || !r.success) {
+        showToast('Gagal memvalidasi data profil', 'error');
+        return;
+      }
+      const d = r.data;
+      document.getElementById('greetingName').textContent = 'Halo, ' + d.namaLengkap + '!';
+      document.getElementById('greetingDate').textContent = new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      document.getElementById('greetingJabatan').textContent = d.jabatan || '-';
+      document.getElementById('greetingDivisi').textContent = d.divisi || '-';
+
+      document.getElementById('profilContent').innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px;">
+          ${renderInfoRow('Nama Lengkap', d.namaLengkap)}
+          ${renderInfoRow('Username', d.username)}
+          ${renderInfoRow('Jabatan', d.jabatan)}
+          ${renderInfoRow('Divisi', d.divisi)}
+          ${renderInfoRow('Role', d.role)}
+        </div>`;
+      
+      const defaultAvatar = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23e2e8f0'%3E%3Cpath d='M24 20.993V24H0v-2.996A14.977 14.977 0 0112.004 15c4.904 0 9.26 2.354 11.996 5.993zM16.002 8.999a4 4 0 11-8 0 4 4 0 018 0z' /%3E%3C/svg%3E";
+      let fotoUrl = d.fotoProfil || defaultAvatar;
+      if (fotoUrl.includes('uc?id=')) {
+        fotoUrl = fotoUrl.replace('uc?id=', 'thumbnail?id=') + '&sz=w300';
+      }
+      document.getElementById('greetingAvatar').src = fotoUrl;
+      document.getElementById('modalAvatar').src = fotoUrl;
+    })
+    .withFailureHandler(function(e) { 
+      showToast('Gagal terhubung untuk memuat profil', 'error'); 
+    })
+    .getMyProfile(SESSION.token);
+}
+
+function renderInfoRow(label, value) {
+  return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--gray-50);border-radius:8px;border:1px solid var(--gray-200);">
+    <span style="font-size:13px;color:var(--gray-500);font-weight:500;">${escapeHtml(label)}</span>
+    <span style="font-size:14px;font-weight:700;color:var(--gray-800);">${escapeHtml(value || '-')}</span>
+  </div>`;
+}
+
+// ===================== TODAY STATUS =====================
+function loadTodayStatus(init = false) {
+  let shift = document.getElementById('shiftKerja').value;
+  if (init) shift = ''; // Biarkan backend menentukan shift aktif terakhir
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (init && r && r.success && r.activeShift) {
+        const shiftSelect = document.getElementById('shiftKerja');
+        shiftSelect.value = r.activeShift;
+      }
+      updateShiftSelectState(); // Perbarui status disabled/enabled
+
+      const statusEl = document.getElementById('statusKehadiran');
+      const data = r && r.success ? r.data : null;
+
+      if (!data) {
+        statusEl.textContent = 'Belum Absen';
+        statusEl.className = 'value status-belum';
+        document.getElementById('statusJamMasuk').textContent = '-';
+        document.getElementById('statusJamPulang').textContent = '-';
+        document.getElementById('statusTotalJam').textContent = '-';
+        setAttendanceButtons(false, false);
+        return;
+      }
+
+      const statusClass = data.StatusMasuk === 'Terlambat' ? 'status-terlambat' : data.JamMasuk ? 'status-hadir' : 'status-belum';
+      statusEl.textContent = data.JamMasuk ? (data.StatusMasuk || 'Hadir') : 'Belum Absen';
+      statusEl.className = 'value ' + statusClass;
+      document.getElementById('statusJamMasuk').textContent = data.JamMasuk ? formatTime(data.JamMasuk) : '-';
+      document.getElementById('statusJamPulang').textContent = data.JamPulang ? formatTime(data.JamPulang) : '-';
+      document.getElementById('statusTotalJam').textContent = data.TotalJamKerja ? data.TotalJamKerja + ' jam' : '-';
+      setAttendanceButtons(Boolean(data.JamMasuk), Boolean(data.JamPulang));
+    })
+    .withFailureHandler(function() {
+      showToast('Gagal memuat status hari ini', 'error');
+    })
+    .getTodayAttendance(SESSION.token, shift);
+}
+
+function updateShiftSelectState() {
+  const now = new Date();
+  const timeVal = now.getHours() * 60 + now.getMinutes();
+  const shiftSelect = document.getElementById('shiftKerja');
+  
+  // Waktu ganti shift hanya berfungsi dari 15:45 (945) - 16:15 (975)
+  if (timeVal >= 945 && timeVal <= 975) {
+    shiftSelect.disabled = false;
+  } else {
+    shiftSelect.disabled = true;
+  }
+}
+setInterval(updateShiftSelectState, 60000);
+
+function setAttendanceButtons(hasMasuk, hasPulang) {
+  const btnMasuk = document.getElementById('btnAbsenMasuk');
+  const btnPulang = document.getElementById('btnAbsenPulang');
+  btnMasuk.disabled = hasMasuk;
+  btnPulang.disabled = !hasMasuk || hasPulang;
+  btnMasuk.style.opacity = hasMasuk ? '.55' : '1';
+  btnPulang.style.opacity = (!hasMasuk || hasPulang) ? '.55' : '1';
+}
+
+// ===================== MODAL + GPS + CAMERA =====================
+function openModal(id) {
+  const modal = document.getElementById(id);
+  if (!modal) return;
+  modal.classList.add('active');
+
+  if (id === 'modalMasuk') {
+    resetAttendanceCapture('masuk');
+    requestLocation('masuk');
+    startCamera('masuk');
+  } else if (id === 'modalPulang') {
+    resetAttendanceCapture('pulang');
+    requestLocation('pulang');
+    startCamera('pulang');
+  } else if (id === 'modalRiwayatLembur') {
+    loadRiwayatLembur();
+  } else if (id === 'modalRiwayatIzin') {
+    loadRiwayatIzin();
+  } else if (id === 'modalRiwayat') {
+    const now = new Date();
+    if (!document.getElementById('riwayatBulan').value) {
+      document.getElementById('riwayatBulan').value = now.getMonth() + 1;
+    }
+    if (!document.getElementById('riwayatTahun').value) {
+      document.getElementById('riwayatTahun').value = now.getFullYear();
+    }
+    loadRiwayat();
+  } else if (id === 'modalKasbon') {
+    switchKasbonTab('baru');
+  }
+}
+
+function closeModal(id) {
+  const modal = document.getElementById(id);
+  if (modal) modal.classList.remove('active');
+}
+
+document.querySelectorAll('.modal-overlay').forEach(function(el) {
+  el.addEventListener('click', function(e) {
+    if (e.target === el) {
+      closeModal(el.id);
+      stopCamera();
+    }
+  });
+});
+
+function resetAttendanceCapture(type) {
+  gpsData[type] = null;
+  fotoData[type] = null;
+  const suffix = cap(type);
+  const preview = document.getElementById('cameraPreview' + suffix);
+  if (preview) {
+    preview.innerHTML = '<div class="camera-placeholder"><svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg><div style="font-size:13px;margin-top:8px;">Kamera belum aktif</div></div>';
+  }
+  const capture = document.getElementById('btnCapture' + suffix);
+  const retake = document.getElementById('btnRetake' + suffix);
+  if (capture) capture.style.display = 'flex';
+  if (retake) retake.style.display = 'none';
+  updateSubmitState(type);
+}
+
+function requestLocation(type) {
+  const suffix = cap(type);
+  const statusEl = document.getElementById('locationStatus' + suffix);
+  const coordsEl = document.getElementById('locationCoords' + suffix);
+
+  const shiftVal = document.getElementById('shiftKerja').value;
+  const isLuar = (shiftVal === 'Dinas Luar' || shiftVal === 'Pelatihan');
+
+  if (isLuar) {
+    gpsData[type] = {
+      lat: 0,
+      lng: 0,
+      lokasi: 'Luar Kantor (' + shiftVal + ')'
+    };
+    if (coordsEl) coordsEl.textContent = gpsData[type].lokasi;
+    if (statusEl) statusEl.innerHTML = '<div class="dot"></div> GPS Dinonaktifkan (' + shiftVal + ')';
+    updateSubmitState(type);
+    return;
+  }
+
+  if (!navigator.geolocation) {
+    setLocationStatus(type, 'Browser tidak mendukung GPS', true);
+    return;
+  }
+
+  setLocationStatus(type, 'Mendapatkan lokasi GPS...', false);
+  if (coordsEl) coordsEl.textContent = '';
+  navigator.geolocation.getCurrentPosition(function(pos) {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    gpsData[type] = {
+      lat: lat,
+      lng: lng,
+      lokasi: lat.toFixed(6) + ', ' + lng.toFixed(6)
+    };
+    if (coordsEl) coordsEl.textContent = gpsData[type].lokasi;
+    if (statusEl) statusEl.innerHTML = '<div class="dot"></div> Lokasi berhasil didapatkan';
+    updateSubmitState(type);
+  }, function(err) {
+    gpsData[type] = null;
+    setLocationStatus(type, err.message || 'Gagal mendapatkan lokasi', true);
+    updateSubmitState(type);
+  }, {
+    enableHighAccuracy: true,
+    timeout: 15000,
+    maximumAge: 0
+  });
+}
+
+function setLocationStatus(type, message, danger) {
+  const suffix = cap(type);
+  const statusEl = document.getElementById('locationStatus' + suffix);
+  if (!statusEl) return;
+  statusEl.className = 'location-status' + (danger ? ' out-of-range' : '');
+  statusEl.innerHTML = '<div class="dot' + (danger ? ' red' : '') + '"></div> ' + escapeHtml(message);
+}
+
+let faceModelsLoaded = false;
+let faceDetectionInterval = null;
+
+async function loadFaceModels() {
+  if (faceModelsLoaded) return;
+  try {
+    const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api/model/';
+    await Promise.all([
+      faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+      faceapi.nets.faceExpressionNet.loadFromUri(MODEL_URL)
+    ]);
+    faceModelsLoaded = true;
+    console.log('Face models loaded');
+  } catch (err) {
+    console.error('Failed to load face models', err);
+    showToast('Deteksi wajah gagal dimuat, menggunakan mode standar.', 'warning');
+  }
+}
+
+// Load models preemptively
+setTimeout(loadFaceModels, 1000);
+
+function enableCaptureBtn(suffix) {
+  const btn = document.getElementById('btnCapture' + suffix);
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> Ambil Foto';
+    btn.style.background = 'var(--gray-800)';
+  }
+}
+
+async function startCamera(type) {
+  const suffix = cap(type);
+  const preview = document.getElementById('cameraPreview' + suffix);
+  try {
+    stopCamera();
+    activeCamera = type;
+    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    videoEl = document.createElement('video');
+    videoEl.autoplay = true;
+    videoEl.playsInline = true;
+    videoEl.muted = true;
+    videoEl.srcObject = stream;
+    preview.innerHTML = '';
+    preview.appendChild(videoEl);
+    
+    // Disable capture until liveness detected
+    const captureBtn = document.getElementById('btnCapture' + suffix);
+    if (captureBtn) {
+      captureBtn.disabled = true;
+      captureBtn.innerHTML = 'Memuat Deteksi Wajah...';
+      captureBtn.style.background = 'var(--gray-600)';
+    }
+
+    videoEl.addEventListener('play', async () => {
+      if (!faceModelsLoaded) {
+        await loadFaceModels();
+      }
+      if (!faceModelsLoaded) {
+        // Fallback jika model gagal dimuat
+        enableCaptureBtn(suffix);
+        return;
+      }
+      
+      if (captureBtn) {
+        captureBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/></svg> Silakan Tersenyum...';
+      }
+
+      const canvas = faceapi.createCanvasFromMedia(videoEl);
+      canvas.style.position = 'absolute';
+      canvas.style.top = '0';
+      canvas.style.left = '0';
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      preview.appendChild(canvas);
+      
+      const displaySize = { width: videoEl.videoWidth || 640, height: videoEl.videoHeight || 480 };
+      faceapi.matchDimensions(canvas, displaySize);
+
+      if (faceDetectionInterval) clearInterval(faceDetectionInterval);
+      faceDetectionInterval = setInterval(async () => {
+        if (!videoEl || videoEl.paused || videoEl.ended) {
+          clearInterval(faceDetectionInterval);
+          return;
+        }
+        try {
+          const detections = await faceapi.detectAllFaces(videoEl, new faceapi.TinyFaceDetectorOptions()).withFaceExpressions();
+          const resizedDetections = faceapi.resizeResults(detections, displaySize);
+          
+          canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+          faceapi.draw.drawDetections(canvas, resizedDetections);
+          // faceapi.draw.drawFaceExpressions(canvas, resizedDetections); // Optional: hide expression text to keep it clean
+
+          if (detections.length === 1) {
+            const expressions = detections[0].expressions;
+            if (expressions.happy > 0.7) {
+              clearInterval(faceDetectionInterval);
+              canvas.getContext('2d').clearRect(0, 0, canvas.width, canvas.height);
+              if (captureBtn) {
+                captureBtn.disabled = false;
+                captureBtn.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="3"/></svg> Ambil Foto (Senyum!)';
+                captureBtn.style.background = 'var(--success)';
+              }
+            }
+          }
+        } catch(e) {}
+      }, 300);
+    });
+  } catch (err) {
+    console.error('Kamera gagal diakses:', err);
+    showToast('Akses kamera ditolak/tidak didukung. Gunakan tombol Pilih Foto.', 'warning');
+    preview.innerHTML = `
+      <div class="camera-placeholder" style="padding: 20px;">
+        <svg viewBox="0 0 24 24" width="48" height="48" fill="none" stroke="var(--danger)" stroke-width="1.5" style="margin-bottom: 8px;"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/><line x1="1" y1="1" x2="23" y2="23" stroke="var(--danger)" stroke-width="2"/></svg>
+        <div style="font-size:13px;font-weight:600;color:var(--danger);margin-bottom:8px;">Kamera Diblokir / Tidak Didukung</div>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('fileInput${suffix}').click()" style="margin: 0 auto; width: auto; display: inline-flex; align-items: center; gap: 6px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Pilih / Ambil Foto
+        </button>
+      </div>
+    `;
+    const captureBtn = document.getElementById('btnCapture' + suffix);
+    if (captureBtn) captureBtn.style.display = 'none';
+  }
+}
+
+function stopCamera() {
+  if (faceDetectionInterval) {
+    clearInterval(faceDetectionInterval);
+    faceDetectionInterval = null;
+  }
+  if (stream) {
+    stream.getTracks().forEach(function(track) { track.stop(); });
+  }
+  stream = null;
+  videoEl = null;
+  activeCamera = null;
+}
+
+function capturePhoto(type) {
+  const suffix = cap(type);
+  if (!videoEl) {
+    const fileInput = document.getElementById('fileInput' + suffix);
+    if (fileInput) {
+      fileInput.click();
+    } else {
+      showToast('Kamera belum aktif', 'error');
+    }
+    return;
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = videoEl.videoWidth || 640;
+  canvas.height = videoEl.videoHeight || 480;
+  canvas.getContext('2d').drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+  fotoData[type] = canvas.toDataURL('image/jpeg', 0.78);
+  document.getElementById('cameraPreview' + suffix).innerHTML = '<img alt="Foto selfie" src="' + fotoData[type] + '">';
+  document.getElementById('btnCapture' + suffix).style.display = 'none';
+  document.getElementById('btnRetake' + suffix).style.display = 'block';
+  stopCamera();
+  updateSubmitState(type);
+}
+
+function handleFileChange(event, type) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Foto maksimal 2 MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    fotoData[type] = e.target.result;
+    const suffix = cap(type);
+    document.getElementById('cameraPreview' + suffix).innerHTML = '<img alt="Foto selfie" src="' + fotoData[type] + '">';
+    document.getElementById('btnCapture' + suffix).style.display = 'none';
+    document.getElementById('btnRetake' + suffix).style.display = 'block';
+    updateSubmitState(type);
+  };
+  reader.readAsDataURL(file);
+}
+
+function retakePhoto(type) {
+  fotoData[type] = null;
+  startCamera(type);
+  const suffix = cap(type);
+  document.getElementById('btnCapture' + suffix).style.display = 'flex';
+  document.getElementById('btnRetake' + suffix).style.display = 'none';
+  updateSubmitState(type);
+}
+
+function updateSubmitState(type) {
+  const suffix = cap(type);
+  const btn = document.getElementById('btnSubmit' + suffix);
+  if (!btn) return;
+  const hasBaseData = Boolean(gpsData[type] && fotoData[type]);
+  if (type === 'pulang') {
+    const update = document.getElementById('updatePekerjaan').value.trim();
+    btn.disabled = !(hasBaseData && update.length >= 20);
+  } else {
+    btn.disabled = !hasBaseData;
+  }
+}
+
+function updateCharCount() {
+  const value = document.getElementById('updatePekerjaan').value.trim();
+  document.getElementById('charCount').textContent = value.length + ' / minimal 20 karakter';
+  updateSubmitState('pulang');
+}
+
+// ===================== ATTENDANCE SUBMIT =====================
+function submitAbsenMasuk() {
+  if (!gpsData.masuk || !fotoData.masuk) {
+    showToast('Lengkapi lokasi dan foto terlebih dahulu', 'error');
+    return;
+  }
+  setSubmitLoading('btnSubmitMasuk', true);
+  google.script.run
+    .withSuccessHandler(function(r) {
+      setSubmitLoading('btnSubmitMasuk', false);
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        closeModal('modalMasuk');
+        stopCamera();
+        loadTodayStatus();
+      }
+    })
+    .withFailureHandler(function() {
+      setSubmitLoading('btnSubmitMasuk', false);
+      showToast('Gagal mengirim absen masuk', 'error');
+    })
+    .checkInAttendance(SESSION.token, {
+      lat: gpsData.masuk.lat,
+      lng: gpsData.masuk.lng,
+      lokasi: gpsData.masuk.lokasi,
+      fotoBase64: fotoData.masuk,
+      shift: document.getElementById('shiftKerja').value
+    });
+}
+
+function submitAbsenPulang() {
+  const updatePekerjaan = document.getElementById('updatePekerjaan').value.trim();
+  if (!gpsData.pulang || !fotoData.pulang || updatePekerjaan.length < 20) {
+    showToast('Lengkapi lokasi, foto, dan update pekerjaan', 'error');
+    return;
+  }
+  setSubmitLoading('btnSubmitPulang', true);
+  google.script.run
+    .withSuccessHandler(function(r) {
+      setSubmitLoading('btnSubmitPulang', false);
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        closeModal('modalPulang');
+        stopCamera();
+        document.getElementById('updatePekerjaan').value = '';
+        updateCharCount();
+        loadTodayStatus();
+      }
+    })
+    .withFailureHandler(function() {
+      setSubmitLoading('btnSubmitPulang', false);
+      showToast('Gagal mengirim absen pulang', 'error');
+    })
+    .checkOutAttendance(SESSION.token, {
+      lat: gpsData.pulang.lat,
+      lng: gpsData.pulang.lng,
+      lokasi: gpsData.pulang.lokasi,
+      fotoBase64: fotoData.pulang,
+      updatePekerjaan: updatePekerjaan,
+      shift: document.getElementById('shiftKerja').value
+    });
+}
+
+function setSubmitLoading(id, loading) {
+  const btn = document.getElementById(id);
+  btn.disabled = loading;
+  btn.dataset.originalText = btn.dataset.originalText || btn.textContent;
+  btn.textContent = loading ? 'Memproses...' : btn.dataset.originalText;
+}
+
+// ===================== LEAVE + OVERTIME =====================
+let izinFotoData = null;
+
+function updateIzinLabel() {
+  const jenis = document.getElementById('izinJenis').value;
+  document.getElementById('izinAlasanLabel').textContent = jenis === 'Sakit' ? 'Keterangan Sakit' : 'Alasan';
+  const buktiLabel = document.getElementById('izinBuktiLabel');
+  if (jenis === 'Sakit') {
+    buktiLabel.textContent = 'Foto Bukti / Surat Dokter (Wajib)';
+    buktiLabel.classList.add('required');
+  } else {
+    buktiLabel.textContent = 'Foto Bukti (Opsional)';
+    buktiLabel.classList.remove('required');
+  }
+}
+
+function previewIzinFoto(event) {
+  const file = event.target.files && event.target.files[0];
+  izinFotoData = null;
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Foto maksimal 2 MB', 'error');
+    event.target.value = '';
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    izinFotoData = e.target.result;
+    document.getElementById('izinFotoPreview').textContent = file.name;
+  };
+  reader.readAsDataURL(file);
+}
+
+function submitIzin() {
+  const payload = {
+    jenis: document.getElementById('izinJenis').value,
+    tanggalMulai: document.getElementById('izinTanggalMulai').value,
+    tanggalSelesai: document.getElementById('izinTanggalSelesai').value,
+    alasan: document.getElementById('izinAlasan').value.trim(),
+    fotoBukti: izinFotoData
+  };
+  if (!payload.jenis || !payload.tanggalMulai || !payload.tanggalSelesai || payload.alasan.length < 20) {
+    showToast('Lengkapi data izin/sakit', 'error');
+    return;
+  }
+  if (payload.jenis === 'Sakit' && !payload.fotoBukti) {
+    showToast('Surat dokter / bukti foto wajib diunggah untuk izin sakit', 'error');
+    return;
+  }
+  setSubmitLoading('btnSubmitIzin', true);
+  google.script.run
+    .withSuccessHandler(function(r) {
+      setSubmitLoading('btnSubmitIzin', false);
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        closeModal('modalIzin');
+        document.getElementById('izinJenis').value = '';
+        document.getElementById('izinAlasan').value = '';
+        document.getElementById('izinFoto').value = '';
+        document.getElementById('izinFotoPreview').textContent = 'Ketuk untuk upload foto';
+        izinFotoData = null;
+      }
+    })
+    .withFailureHandler(function() {
+      setSubmitLoading('btnSubmitIzin', false);
+      showToast('Gagal mengirim pengajuan', 'error');
+    })
+    .submitLeave(SESSION.token, payload);
+}
+
+function submitLembur() {
+  const payload = {
+    tanggal: document.getElementById('lemburTanggal').value,
+    jamMulai: document.getElementById('lemburJamMulai').value,
+    jamSelesai: document.getElementById('lemburJamSelesai').value,
+    keterangan: document.getElementById('lemburKeterangan').value.trim()
+  };
+  if (!payload.tanggal || !payload.jamMulai || !payload.jamSelesai || payload.keterangan.length < 5) {
+    showToast('Lengkapi data lembur', 'error');
+    return;
+  }
+  setSubmitLoading('btnSubmitLembur', true);
+  google.script.run
+    .withSuccessHandler(function(r) {
+      setSubmitLoading('btnSubmitLembur', false);
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        closeModal('modalLembur');
+        document.getElementById('lemburJamMulai').value = '';
+        document.getElementById('lemburJamSelesai').value = '';
+        document.getElementById('lemburKeterangan').value = '';
+      }
+    })
+    .withFailureHandler(function() {
+      setSubmitLoading('btnSubmitLembur', false);
+      showToast('Gagal mengirim lembur', 'error');
+    })
+    .submitOvertime(SESSION.token, payload);
+}
+
+// ===================== HISTORY =====================
+function loadRiwayat() {
+  const bulan = document.getElementById('riwayatBulan').value;
+  const tahun = document.getElementById('riwayatTahun').value;
+  const target = document.getElementById('riwayatTable');
+  target.innerHTML = '<div class="empty-state">Memuat riwayat...</div>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r.success || !r.data || !r.data.length) {
+        target.innerHTML = '<div class="empty-state">Tidak ada riwayat absensi</div>';
+        return;
+      }
+      target.innerHTML = '<table class="data-table"><thead><tr><th>Tanggal</th><th>Masuk</th><th>Pulang</th><th>Status</th></tr></thead><tbody>' +
+        r.data.map(function(a) {
+          return '<tr><td>' + escapeHtml(formatDate(a.Tanggal)) + '</td><td>' + escapeHtml(formatTime(a.JamMasuk)) + '</td><td>' + escapeHtml(formatTime(a.JamPulang)) + '</td><td><span class="badge ' + (a.StatusMasuk === 'Terlambat' ? 'badge-warning' : 'badge-success') + '">' + escapeHtml(a.StatusMasuk || '-') + '</span></td></tr>';
+        }).join('') + '</tbody></table>';
+    })
+    .withFailureHandler(function() { target.innerHTML = '<div class="empty-state">Gagal memuat riwayat</div>'; })
+    .getMyAttendanceHistory(SESSION.token, bulan, tahun);
+}
+
+function loadRiwayatLembur() {
+  const target = document.getElementById('riwayatLemburList');
+  target.innerHTML = '<div class="empty-state">Memuat data...</div>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r.success || !r.data || !r.data.length) {
+        target.innerHTML = '<div class="empty-state">Belum ada riwayat lembur</div>';
+        return;
+      }
+      target.innerHTML = r.data.map(function(o) {
+        return '<div class="section-card"><strong>' + escapeHtml(formatDate(o.Tanggal)) + '</strong><div style="font-size:13px;color:var(--gray-600);margin-top:6px;">' + escapeHtml(formatTime(o.JamMulai)) + ' - ' + escapeHtml(formatTime(o.JamSelesai)) + ' (' + escapeHtml(o.TotalJam || 0) + ' jam)</div><div style="font-size:13px;margin-top:6px;">' + escapeHtml(o.Keterangan || '-') + '</div><span class="badge ' + statusBadge(o.Status) + '" style="margin-top:10px;">' + escapeHtml(o.Status || '-') + '</span></div>';
+      }).join('');
+    })
+    .withFailureHandler(function() { target.innerHTML = '<div class="empty-state">Gagal memuat lembur</div>'; })
+    .getMyOvertimeHistory(SESSION.token, '', '');
+}
+
+function loadRiwayatIzin() {
+  const target = document.getElementById('riwayatIzinList');
+  target.innerHTML = '<div class="empty-state">Memuat data...</div>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r.success || !r.data || !r.data.length) {
+        target.innerHTML = '<div class="empty-state">Belum ada riwayat izin/sakit</div>';
+        return;
+      }
+      target.innerHTML = r.data.map(function(l) {
+        return '<div class="section-card"><strong>' + escapeHtml(l.JenisPengajuan || '-') + '</strong><div style="font-size:13px;color:var(--gray-600);margin-top:6px;">' + escapeHtml(formatDate(l.TanggalMulai)) + ' s/d ' + escapeHtml(formatDate(l.TanggalSelesai)) + '</div><div style="font-size:13px;margin-top:6px;">' + escapeHtml(l.Alasan || '-') + '</div><span class="badge ' + statusBadge(l.Status) + '" style="margin-top:10px;">' + escapeHtml(l.Status || '-') + '</span></div>';
+      }).join('');
+    })
+    .withFailureHandler(function() { target.innerHTML = '<div class="empty-state">Gagal memuat izin/sakit</div>'; })
+    .getMyLeaveHistory(SESSION.token);
+}
+
+// ===================== KASBON =====================
+function switchKasbonTab(tab) {
+  const btnBaru = document.getElementById('btnTabKasbonBaru');
+  const btnRiwayat = document.getElementById('btnTabKasbonRiwayat');
+  const secBaru = document.getElementById('kasbonBaruSection');
+  const secRiwayat = document.getElementById('kasbonRiwayatSection');
+
+  if (tab === 'baru') {
+    btnBaru.className = 'btn btn-primary';
+    btnRiwayat.className = 'btn btn-secondary';
+    secBaru.style.display = 'block';
+    secRiwayat.style.display = 'none';
+  } else {
+    btnBaru.className = 'btn btn-secondary';
+    btnRiwayat.className = 'btn btn-primary';
+    secBaru.style.display = 'none';
+    secRiwayat.style.display = 'block';
+    loadKasbonHistory();
+  }
+}
+
+function submitKasbon() {
+  const nominal = document.getElementById('kasbonNominal').value;
+  const alasan = document.getElementById('kasbonAlasan').value.trim();
+
+  if (!nominal || isNaN(nominal) || nominal < 10000) {
+    showToast('Nominal tidak valid (Minimal Rp 10.000)', 'error');
+    return;
+  }
+  if (alasan.length < 10) {
+    showToast('Alasan harus diisi minimal 10 karakter', 'error');
+    return;
+  }
+
+  setSubmitLoading('btnSubmitKasbon', true);
+  google.script.run
+    .withSuccessHandler(function(r) {
+      setSubmitLoading('btnSubmitKasbon', false);
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        document.getElementById('kasbonNominal').value = '';
+        document.getElementById('kasbonAlasan').value = '';
+        switchKasbonTab('riwayat');
+      }
+    })
+    .withFailureHandler(function() {
+      setSubmitLoading('btnSubmitKasbon', false);
+      showToast('Gagal mengajukan kasbon', 'error');
+    })
+    .submitKasbon(SESSION.token, nominal, alasan);
+}
+
+function loadKasbonHistory() {
+  const target = document.getElementById('riwayatKasbonList');
+  target.innerHTML = '<div class="empty-state">Memuat data...</div>';
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (!r.success || !r.data || !r.data.length) {
+        target.innerHTML = '<div class="empty-state">Belum ada riwayat kasbon</div>';
+        return;
+      }
+      target.innerHTML = r.data.map(function(k) {
+        return '<div class="section-card">' +
+          '<div style="display:flex; justify-content:space-between; margin-bottom:8px;">' +
+            '<strong>Rp ' + parseInt(k.Nominal || 0).toLocaleString('id-ID') + '</strong>' +
+            '<span style="font-size:12px; color:var(--gray-500);">' + escapeHtml(formatDate(k.Tanggal)) + '</span>' +
+          '</div>' +
+          '<div style="font-size:13px; color:var(--gray-600); margin-bottom:8px;">' + escapeHtml(k.Alasan || '-') + '</div>' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">' +
+            '<span class="badge ' + statusBadge(k.StatusApproval) + '">' + escapeHtml(k.StatusApproval || 'Pending') + '</span>' +
+            '<span style="font-size:12px; font-weight:600; color:' + (k.Sisa > 0 ? 'var(--danger)' : 'var(--success)') + ';">Sisa: Rp ' + parseInt(k.Sisa || 0).toLocaleString('id-ID') + '</span>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .withFailureHandler(function() { target.innerHTML = '<div class="empty-state">Gagal memuat kasbon</div>'; })
+    .getKasbonHistory(SESSION.token);
+}
+
+// ===================== PROFILE ACTIONS =====================
+function gantiPassword() {
+  const oldPassword = document.getElementById('pwLama').value;
+  const newPassword = document.getElementById('pwBaru').value;
+  const confirmPassword = document.getElementById('pwKonfirmasi').value;
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    showToast('Lengkapi semua field password', 'error');
+    return;
+  }
+  if (newPassword.length < 6) {
+    showToast('Password baru minimal 6 karakter', 'error');
+    return;
+  }
+  if (newPassword !== confirmPassword) {
+    showToast('Konfirmasi password tidak sama', 'error');
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(function(r) {
+      showToast(r.message, r.success ? 'success' : 'error');
+      if (r.success) {
+        document.getElementById('pwLama').value = '';
+        document.getElementById('pwBaru').value = '';
+        document.getElementById('pwKonfirmasi').value = '';
+      }
+    })
+    .withFailureHandler(function() { showToast('Gagal mengganti password', 'error'); })
+    .changePassword(SESSION.token, oldPassword, newPassword);
+}
+
+function doLogout() {
+  if (SESSION && SESSION.token) google.script.run.logout(SESSION.token);
+  try { sessionStorage.removeItem('absSession'); } catch(e) {}
+  window.history.replaceState(null, '', ' ');
+  google.script.run.withSuccessHandler(function(html) {
+    document.open(); document.write(html); document.close();
+    setTimeout(function() { if (typeof window.onload === 'function') window.onload(); }, 100);
+  }).getHtmlPage('login', null);
+}
+
+// ===================== UTIL =====================
+function cap(value) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatTime(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return String(value);
+  return date.toLocaleDateString('id-ID');
+}
+
+function statusBadge(status) {
+  if (status === 'Disetujui') return 'badge-success';
+  if (status === 'Ditolak') return 'badge-danger';
+  if (status === 'Terlambat') return 'badge-warning';
+  return 'badge-blue';
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function showToast(msg, type) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.className = type ? 'show ' + type : 'show';
+  setTimeout(function() {
+    toast.className = '';
+  }, 3000);
+}
+
+// ===================== SLIP GAJI =====================
+function generateYearsSlipGaji() {
+  var sel = document.getElementById('slipTahun');
+  if (!sel) return;
+  sel.innerHTML = '';
+  var yr = new Date().getFullYear();
+  for (var i = 0; i < 3; i++) {
+    var o = document.createElement('option');
+    o.value = yr - i; o.textContent = yr - i;
+    sel.appendChild(o);
+  }
+}
+
+function loadSlipGaji() {
+  var bulan = document.getElementById('slipBulan').value;
+  var tahun = document.getElementById('slipTahun').value;
+  var container = document.getElementById('slipGajiContent');
+  container.innerHTML = '<div class="empty-state">Memuat slip gaji...</div>';
+
+  google.script.run.withSuccessHandler(function(r) {
+    if (!r || !r.success || !r.data) {
+      container.innerHTML = '<div class="empty-state">' + ((r && r.message) || 'Slip gaji tidak ditemukan untuk periode ini') + '</div>';
+      return;
+    }
+    var p = r.data;
+    var fmt = function(v) { return 'Rp' + parseInt(v || 0).toLocaleString('id-ID'); };
+    var namaBulan = ['','Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
+    var html = '';
+    html += '<div style="background:linear-gradient(135deg,var(--primary),var(--accent));color:white;padding:16px;border-radius:var(--radius-sm);margin-bottom:16px;text-align:center;">';
+    html += '<div style="font-size:11px;opacity:.8;">Slip Gaji Periode</div>';
+    html += '<div style="font-size:18px;font-weight:800;">' + (namaBulan[parseInt(bulan)] || bulan) + ' ' + tahun + '</div>';
+    html += '<div style="font-size:13px;margin-top:4px;">' + escapeHtml(p.NamaKaryawan || '') + '</div>';
+    html += '</div>';
+
+    html += '<div style="font-size:12px;font-weight:700;color:var(--success);margin-bottom:8px;">📥 Pendapatan</div>';
+    html += renderSlipRow('Gaji Pokok', fmt(p.GajiPokok));
+    html += renderSlipRow('Transport', fmt(p.Transport));
+    html += renderSlipRow('Uang Makan', fmt(p.UangMakan));
+    html += renderSlipRow('Uang Lembur', fmt(p.UangLembur));
+    html += renderSlipRow('Bonus', fmt(p.Bonus));
+    html += renderSlipRow('Tunjangan', fmt(p.Tunjangan));
+    html += '<div style="background:rgba(16,185,129,.08);padding:10px 14px;border-radius:8px;margin:8px 0 16px;display:flex;justify-content:space-between;font-weight:700;">';
+    html += '<span style="color:var(--success);">Total Pendapatan</span><span style="color:var(--success);">' + fmt(p.TotalPendapatan) + '</span></div>';
+
+    html += '<div style="font-size:12px;font-weight:700;color:#ef4444;margin-bottom:8px;">📤 Potongan</div>';
+    html += renderSlipRow('Kasbon', fmt(p.Kasbon));
+    html += renderSlipRow('BPJS TK', fmt(p.BPJSTK));
+    html += renderSlipRow('BPJS Kesehatan', fmt(p.BPJSKesehatan));
+    html += renderSlipRow('PPh21', fmt(p.PPh21));
+    html += renderSlipRow('Potongan Lain', fmt(p.PotonganLain));
+    html += '<div style="background:rgba(239,68,68,.08);padding:10px 14px;border-radius:8px;margin:8px 0 16px;display:flex;justify-content:space-between;font-weight:700;">';
+    html += '<span style="color:#ef4444;">Total Potongan</span><span style="color:#ef4444;">' + fmt(p.TotalPotongan) + '</span></div>';
+
+    html += '<div style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:2px solid #86efac;padding:16px;border-radius:var(--radius-sm);text-align:center;margin-top:8px;">';
+    html += '<div style="font-size:12px;color:var(--gray-600);font-weight:600;">Gaji Bersih</div>';
+    html += '<div style="font-size:24px;font-weight:800;color:var(--success);">' + fmt(p.GajiBersih) + '</div>';
+    html += '<div style="font-size:11px;color:var(--gray-400);margin-top:4px;">Status: <span class="badge badge-' + (p.StatusBayar === 'Sudah Dibayar' ? 'success' : 'warning') + '">' + escapeHtml(p.StatusBayar || 'Belum Dibayar') + '</span></div>';
+    html += '</div>';
+
+    html += '<div style="margin-top:12px;font-size:11px;color:var(--gray-400);text-align:center;">Kehadiran: ' + (p.HariHadir || 0) + '/' + (p.HariKerja || 0) + ' hari kerja</div>';
+
+    container.innerHTML = html;
+  }).withFailureHandler(function(e) {
+    container.innerHTML = '<div class="empty-state">Gagal memuat slip gaji</div>';
+  }).getMyPayslip(SESSION.token, bulan, tahun);
+}
+
+function renderSlipRow(label, value) {
+  return '<div style="display:flex;justify-content:space-between;padding:8px 14px;background:var(--gray-50);border-radius:8px;margin-bottom:4px;font-size:13px;">' +
+    '<span style="color:var(--gray-600);">' + label + '</span>' +
+    '<span style="font-weight:600;">' + value + '</span></div>';
+}
+// ===================== FOTO PROFIL LOGIC =====================
+let profileStream = null;
+let profileVideoEl = null;
+
+async function startProfileCamera() {
+  document.getElementById('profilActionButtons').style.display = 'none';
+  document.getElementById('cameraAreaProfil').style.display = 'block';
+  const preview = document.getElementById('cameraPreviewProfil');
+  try {
+    profileStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+    profileVideoEl = document.createElement('video');
+    profileVideoEl.autoplay = true;
+    profileVideoEl.playsInline = true;
+    profileVideoEl.muted = true;
+    profileVideoEl.style.width = '100%';
+    profileVideoEl.style.height = '100%';
+    profileVideoEl.style.objectFit = 'cover';
+    profileVideoEl.srcObject = profileStream;
+    preview.innerHTML = '';
+    preview.appendChild(profileVideoEl);
+  } catch (err) {
+    console.error('Kamera gagal diakses:', err);
+    showToast('Kamera tidak bisa diakses.', 'error');
+    stopProfileCamera();
+  }
+}
+
+function stopProfileCamera() {
+  if (profileStream) {
+    profileStream.getTracks().forEach(function(track) { track.stop(); });
+  }
+  profileStream = null;
+  profileVideoEl = null;
+  document.getElementById('cameraAreaProfil').style.display = 'none';
+  document.getElementById('profilActionButtons').style.display = 'flex';
+}
+
+function captureProfileCamera() {
+  if (!profileVideoEl) return;
+  const canvas = document.createElement('canvas');
+  canvas.width = profileVideoEl.videoWidth;
+  canvas.height = profileVideoEl.videoHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(profileVideoEl, 0, 0, canvas.width, canvas.height);
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+  stopProfileCamera();
+  uploadProfilePhoto(dataUrl);
+}
+
+function handleProfilFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showToast('Ukuran foto maksimal 2 MB', 'warning');
+    return;
+  }
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    uploadProfilePhoto(e.target.result);
+  };
+  reader.readAsDataURL(file);
+}
+
+function uploadProfilePhoto(base64Data) {
+  showToast('Mengunggah foto profil...', 'info');
+  google.script.run
+    .withSuccessHandler(function(r) {
+      if (r && r.success) {
+        showToast('Foto profil berhasil diperbarui!', 'success');
+        let displayUrl = r.fotoUrl;
+        if (displayUrl.includes('uc?id=')) {
+          displayUrl = displayUrl.replace('uc?id=', 'thumbnail?id=') + '&sz=w300';
+        }
+        document.getElementById('greetingAvatar').src = displayUrl;
+        document.getElementById('modalAvatar').src = displayUrl;
+      } else {
+        showToast(r ? r.message : 'Gagal mengunggah foto', 'error');
+      }
+    })
+    .withFailureHandler(function(e) {
+      showToast('Gagal terhubung ke server', 'error');
+    })
+    .updateProfilePhoto(SESSION.token, base64Data);
+}
+
+</script>
+</body>
+</html>
+<script src="gas-polyfill.js"></script>

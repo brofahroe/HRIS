@@ -1255,7 +1255,44 @@ function loadAbsensiReport() {
 }
 
 function exportAbsensi() {
-  showToast('Fungsi export tersedia melalui Google Sheets', 'warning');
+  const table = document.querySelector('#page-absensi table');
+  if (!table) return;
+  
+  const rows = table.querySelectorAll('tr');
+  let csvContent = [];
+  let hasData = false;
+  
+  rows.forEach((row, index) => {
+    if (row.querySelector('.empty-state')) return;
+    
+    let rowData = [];
+    const cols = row.querySelectorAll('th, td');
+    cols.forEach(col => {
+      let text = col.innerText.replace(/\[Foto\]/g, '').trim();
+      text = text.replace(/"/g, '""');
+      rowData.push('"' + text + '"');
+    });
+    
+    if (index > 0) hasData = true;
+    csvContent.push(rowData.join(','));
+  });
+  
+  if (!hasData) {
+    showToast('Tidak ada data untuk diexport', 'warning');
+    return;
+  }
+  
+  const csvString = csvContent.join('\n');
+  const blob = new Blob([csvString], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', 'Laporan_Absensi.csv');
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 // ===================== LEMBUR =====================

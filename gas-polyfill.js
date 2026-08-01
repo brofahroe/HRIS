@@ -5,7 +5,7 @@
  */
 
 // GANTI URL DI BAWAH INI DENGAN URL DEPLOYMENT APP SCRIPT ANDA
-const GAS_API_URL = "https://script.google.com/macros/s/AKfycbyO19L3pfMyYOIs-eus5d5KvcRLV2y5rw3YpKfngFGJUDEu_3XbCbOGN_RX2c3UbYnW/exec";
+const GAS_API_URL = "https://script.google.com/macros/s/AKfycbxLVeQLdkohbs9i6BvpJfXN9Cqnu9goy9t4-HhPs5M-5G3OuVKbJkes6bA6YnRlueFU/exec";
 
 window.google = window.google || {};
 window.google.script = window.google.script || {};

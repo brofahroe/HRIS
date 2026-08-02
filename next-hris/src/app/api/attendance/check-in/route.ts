@@ -14,10 +14,12 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
-// Koordinat Kantor Pusat (Contoh: Monas, Jakarta)
-const OFFICE_LAT = -6.1753924;
-const OFFICE_LNG = 106.8271528;
-const MAX_RADIUS_KM = 0.5; // Radius maksimal absensi (500 meter)
+// Daftar Kordinat Lokasi Kantor
+const OFFICE_LOCATIONS = [
+  { name: 'Galeri Batik', lat: -8.1728895, lng: 112.5507406 },
+  { name: 'Sanggar Batik', lat: -8.176151, lng: 112.548144 }
+];
+const MAX_RADIUS_KM = 0.1; // Radius maksimal absensi (100 meter)
 
 export async function POST(request: Request) {
   try {
@@ -34,12 +36,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
     }
 
-    // 1. Validasi Jarak Lokasi
-    const distance = calculateDistance(OFFICE_LAT, OFFICE_LNG, lat, lng);
-    if (distance > MAX_RADIUS_KM) {
+    // 1. Validasi Jarak Lokasi (Cari lokasi terdekat)
+    let minDistance = Infinity;
+    let closestOffice = '';
+
+    for (const office of OFFICE_LOCATIONS) {
+      const distance = calculateDistance(office.lat, office.lng, lat, lng);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closestOffice = office.name;
+      }
+    }
+
+    if (minDistance > MAX_RADIUS_KM) {
       return NextResponse.json({ 
-        error: "Anda berada di luar radius kantor", 
-        distance: `${(distance * 1000).toFixed(0)} meter` 
+        error: "Anda berada di luar radius kantor (Galeri & Sanggar)", 
+        distance: `${(minDistance * 1000).toFixed(0)} meter dari ${closestOffice}` 
       }, { status: 403 });
     }
 

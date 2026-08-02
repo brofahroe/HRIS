@@ -142,7 +142,7 @@ export default function DashboardPage() {
             <h3 className="text-lg font-semibold text-slate-600 mb-2">Jadwal Hari Ini</h3>
             <div className="text-5xl font-extrabold text-blue-900 tracking-tight mb-2">08:00 - 17:00</div>
             <p className="text-sm text-slate-500 flex items-center justify-center gap-1">
-              <MapPin size={16} /> Kantor Pusat (Monas)
+              <MapPin size={16} /> Galeri / Sanggar Batik
             </p>
           </div>
 

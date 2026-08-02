@@ -163,7 +163,7 @@ export default function FaceRegistrationPage() {
       <Script 
         src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js" 
         strategy="afterInteractive"
-        onReady={loadModels}
+        onReady={() => { loadModels(); }}
       />
 
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center sticky top-0 z-50">

@@ -2,18 +2,11 @@ import { NextResponse } from 'next/server';
 import { createClient } from "@supabase/supabase-js";
 import { randomBytes } from "crypto";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-/**
- * Endpoint utilitas reset password massal.
- * Dilindungi: hanya boleh dipanggil oleh Admin yang terotentikasi
- * (kirimkan Bearer token = access JWT Supabase di header Authorization).
- * Metode POST agar tidak bisa dipicu via GET/refresh/bookmark.
- */
 export async function POST(request: Request) {
   try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     // 1. Verifikasi identitas pemanggil dari Bearer token
     const authHeader = request.headers.get('authorization') || '';
     const token = authHeader.replace(/^Bearer\s+/i, '');

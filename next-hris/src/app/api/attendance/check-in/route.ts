@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         check_in_photo: photoUrl || null,
         status: status
       }, {
-        onConflict: 'user_id, date'
+        onConflict: 'user_id,date'
       })
       .select()
       .single();
@@ -92,6 +92,6 @@ export async function POST(request: Request) {
 
   } catch (error: any) {
     console.error("Check-in Error:", error);
-    return NextResponse.json({ error: "Terjadi kesalahan internal" }, { status: 500 });
+    return NextResponse.json({ error: `Kesalahan: ${error.message || JSON.stringify(error)}` }, { status: 500 });
   }
 }

@@ -8,6 +8,10 @@ const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfa
 export const metadata: Metadata = {
   title: "Batik Seng - HRIS Portal",
   description: "Portal internal Batik Seng untuk pencatatan kehadiran",
+  icons: {
+    icon: "/Batik Seng-02.png",
+    apple: "/Batik Seng-02.png",
+  },
 };
 
 export default function RootLayout({

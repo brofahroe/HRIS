@@ -66,13 +66,7 @@ export default function LoginPage() {
             
             {/* Logo area */}
             <div className="flex items-center gap-3 mb-4 lg:mb-12">
-              <div className="w-10 h-10 bg-[#c04838] text-white rounded-xl flex items-center justify-center transform rotate-12">
-                <span className="font-serif font-bold text-2xl italic">B</span>
-              </div>
-              <div className="flex flex-col">
-                <span className="font-bold text-[#c04838] text-xl leading-none">Batik Seng</span>
-                <span className="text-[10px] tracking-widest text-[#3e2723]/60 font-bold uppercase mt-1">HRIS Portal</span>
-              </div>
+              <img src="/Batik Seng-01.png" alt="Batik Seng" className="h-14 object-contain" />
             </div>
 
             <div>

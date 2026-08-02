@@ -52,9 +52,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       <aside className="w-64 bg-white border-r border-[#e8e0d8] flex-col hidden md:flex">
         {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-[#e8e0d8] gap-3">
-          <div className="w-8 h-8 bg-[#c04838] text-white rounded-lg flex items-center justify-center transform rotate-12 shrink-0">
-            <span className="font-serif font-bold text-lg italic">B</span>
-          </div>
+          <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-9 h-9 object-contain shrink-0" />
           <div>
             <div className="font-bold text-[#c04838] leading-none text-sm">Batik Seng</div>
             <div className="text-[10px] tracking-widest text-[#3e2723]/40 font-bold uppercase mt-0.5">Admin Panel</div>
@@ -97,9 +95,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         {/* Mobile Header */}
         <header className="h-16 bg-white border-b border-[#e8e0d8] flex items-center justify-between px-6 md:hidden">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 bg-[#c04838] text-white rounded-lg flex items-center justify-center transform rotate-12">
-              <span className="font-serif font-bold text-base italic">B</span>
-            </div>
+            <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-8 h-8 object-contain" />
             <span className="font-bold text-[#c04838] text-sm">Batik Seng Admin</span>
           </div>
           <button onClick={handleLogout} className="p-2 text-[#c04838] hover:bg-red-50 rounded-lg transition-colors">

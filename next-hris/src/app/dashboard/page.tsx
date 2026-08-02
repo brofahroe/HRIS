@@ -163,9 +163,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           {/* Logo */}
           <div className="hidden sm:flex items-center gap-2 mr-2">
-            <div className="w-7 h-7 bg-[#c04838] text-white rounded-lg flex items-center justify-center transform rotate-12">
-              <span className="font-serif font-bold text-base italic">B</span>
-            </div>
+            <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-7 h-7 object-contain" />
             <span className="font-bold text-[#c04838] text-sm">Batik Seng</span>
           </div>
           <button

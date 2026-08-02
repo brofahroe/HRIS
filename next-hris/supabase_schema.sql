@@ -21,6 +21,7 @@ CREATE TABLE users (
   allowance NUMERIC(15, 2) DEFAULT 0,
   child_allowance NUMERIC(15, 2) DEFAULT 0,
   photo_url TEXT,
+  face_descriptor TEXT, -- Menyimpan data biometrik matriks wajah (JSON array)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 

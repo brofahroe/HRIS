@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
@@ -8,11 +8,39 @@ import { Users, FileText, Settings, LayoutDashboard, LogOut } from "lucide-react
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
+  const [authorized, setAuthorized] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push('/login');
+        return;
+      }
+      
+      const { data: userData } = await supabase
+        .from('users')
+        .select('role')
+        .eq('auth_id', session.user.id)
+        .single();
+        
+      if (userData?.role === 'Admin') {
+        setAuthorized(true);
+      } else {
+        router.push('/dashboard'); // Tolak akses, arahkan ke dashboard karyawan
+      }
+    };
+    checkAuth();
+  }, [router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
+
+  if (!authorized) {
+    return <div className="h-screen w-full flex items-center justify-center bg-slate-50 text-slate-500">Memeriksa otorisasi...</div>;
+  }
 
   return (
     <div className="flex h-screen bg-slate-50">

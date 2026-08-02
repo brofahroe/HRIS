@@ -1,20 +1,27 @@
 const fs = require('fs');
 const csv = require('csv-parser');
+require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 
 // Konfigurasi Supabase
-// Gunakan Service Role Key untuk bypass RLS saat migrasi
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'URL_SUPABASE_ANDA';
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'SERVICE_ROLE_KEY_ANDA';
+// Gunakan Service Role Key untuk bypass RLS saat migrasi. Jika menggunakan Anon Key, pastikan RLS di Supabase dilonggarkan sementara.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
+  console.error("ERROR: NEXT_PUBLIC_SUPABASE_URL di .env.local tidak valid atau tidak terbaca.");
+  process.exit(1);
+}
+
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-async function migrateUsers() {
+async function migrateUsers(csvPath) {
   const users = [];
   
   console.log('Membaca file users.csv...');
   
   // Baca file CSV yang diexport dari Google Sheets
-  fs.createReadStream('users.csv')
+  fs.createReadStream(csvPath)
     .pipe(csv())
     .on('data', (data) => users.push(data))
     .on('end', async () => {
@@ -42,13 +49,13 @@ async function migrateUsers() {
               // Sesuaikan mapping ini dengan nama kolom di CSV Google Sheets Anda
               nik: user.NIK,
               full_name: user.NamaLengkap,
-              email: user.Email, // Atau Username
+              email: user.email || user.Username, // Menggunakan lowercase 'email' sesuai CSV Anda
               role: user.Role === 'Admin' ? 'Admin' : 'Employee',
               position: user.Jabatan,
               division: user.Divisi,
               daily_salary: parseFloat(user.GajiHarian) || 0,
               monthly_salary: parseFloat(user.GajiBulanan) || 0,
-              is_active: user.StatusAktif === 'Aktif'
+              is_active: String(user.StatusAktif).toUpperCase() === 'TRUE'
             });
 
           if (insertError) throw insertError;
@@ -66,9 +73,11 @@ async function migrateUsers() {
     });
 }
 
+const csvPath = require('path').join(__dirname, 'users.csv');
+
 // Pastikan file users.csv ada di direktori yang sama sebelum menjalankan
-if (fs.existsSync('users.csv')) {
-  migrateUsers();
+if (fs.existsSync(csvPath)) {
+  migrateUsers(csvPath);
 } else {
   console.error("File users.csv tidak ditemukan! Silakan export Sheet 'Users' dari Google Sheets sebagai CSV dan simpan di folder scripts ini.");
 }

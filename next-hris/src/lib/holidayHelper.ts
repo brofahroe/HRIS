@@ -1,17 +1,22 @@
 /**
  * Holiday Helper
  * Cek apakah tanggal tertentu adalah hari Minggu atau hari libur nasional Indonesia.
- * Data libur nasional diambil dari API publik: https://api-harilibur.vercel.app
+ *
+ * API: https://titimangsa.sangkan.dev  (sangkan-dev/titimangsa)
+ * Endpoint: GET /v1/holidays/check?date=YYYY-MM-DD
+ *
+ * Response shape:
+ * { data: { isHoliday: boolean, holidays: [{ localName, isNationalHoliday }] } }
  */
 
 export interface HolidayInfo {
-  isOffDay: boolean;      // true jika Minggu atau libur nasional
+  isOffDay: boolean;     // true jika Minggu ATAU libur nasional
   isSunday: boolean;
   isHoliday: boolean;
-  holidayName?: string;   // nama libur jika ada
+  holidayName?: string;  // nama libur jika ada
 }
 
-// Cache sederhana in-memory agar tidak fetch ulang tiap render
+// Cache in-memory sederhana agar tidak fetch ulang tiap render
 const cache: Record<string, HolidayInfo> = {};
 
 export async function checkOffDay(dateStr: string): Promise<HolidayInfo> {
@@ -24,20 +29,26 @@ export async function checkOffDay(dateStr: string): Promise<HolidayInfo> {
   let holidayName: string | undefined;
 
   try {
-    const year = date.getFullYear();
-    const res = await fetch(`https://api-harilibur.vercel.app/api?year=${year}`, {
-      next: { revalidate: 86400 } // cache 1 hari
-    });
+    const res = await fetch(
+      `https://titimangsa.sangkan.dev/v1/holidays/check?date=${dateStr}`,
+      { next: { revalidate: 86400 } } // cache 24 jam di Next.js fetch
+    );
+
     if (res.ok) {
-      const holidays: Array<{ holiday_date: string; holiday_name: string; is_national_holiday: boolean }> = await res.json();
-      const match = holidays.find(h => h.holiday_date === dateStr && h.is_national_holiday);
-      if (match) {
-        isHoliday = true;
-        holidayName = match.holiday_name;
+      const json = await res.json();
+      const data = json?.data;
+
+      if (data?.isHoliday) {
+        // Ambil libur nasional saja (bukan cuti bersama)
+        const national = (data.holidays ?? []).find((h: any) => h.isNationalHoliday);
+        if (national) {
+          isHoliday = true;
+          holidayName = national.localName ?? national.name;
+        }
       }
     }
   } catch {
-    // Jika API gagal, hanya andalkan deteksi Minggu
+    // Jika API gagal, andalkan deteksi hari Minggu saja
   }
 
   const result: HolidayInfo = {

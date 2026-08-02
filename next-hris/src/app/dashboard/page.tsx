@@ -65,7 +65,7 @@ export default function DashboardPage() {
 
         // Cek apakah hari ini hari libur/minggu
         const todayStr = new Date().toISOString().split('T')[0];
-        const dow = new Date().getDay(); // 0=Minggu, 6=Sabtu
+        const dow = new Date().getDay();
         let offDay = false;
         let label = '';
 
@@ -73,14 +73,16 @@ export default function DashboardPage() {
 
         if (!offDay) {
           try {
-            const year = new Date().getFullYear();
-            const res = await fetch(`https://api-harilibur.vercel.app/api?year=${year}`);
+            const res = await fetch(`https://titimangsa.sangkan.dev/v1/holidays/check?date=${todayStr}`);
             if (res.ok) {
-              const holidays = await res.json();
-              const match = holidays.find((h: any) => h.holiday_date === todayStr && h.is_national_holiday);
-              if (match) { offDay = true; label = match.holiday_name; }
+              const json = await res.json();
+              const data = json?.data;
+              if (data?.isHoliday) {
+                const national = (data.holidays ?? []).find((h: any) => h.isNationalHoliday);
+                if (national) { offDay = true; label = national.localName ?? national.name; }
+              }
             }
-          } catch { /* fallback ke deteksi Minggu saja */ }
+          } catch { /* fallback Minggu saja */ }
         }
 
         setIsOffDay(offDay);

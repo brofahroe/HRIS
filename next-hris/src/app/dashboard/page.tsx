@@ -4,21 +4,27 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { LogOut, MapPin, Clock, Camera, CheckCircle, X } from "lucide-react";
+import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList } from "lucide-react";
+
+// Step dalam modal check-out: 'camera' → ambil foto, 'form' → isi update kerja
+type ModalStep = 'camera' | 'form';
 
 export default function DashboardPage() {
   const router = useRouter();
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
 
+  // Camera state
   const [showCamera, setShowCamera] = useState(false);
   const [cameraMode, setCameraMode] = useState<'in' | 'out'>('in');
   const [photoData, setPhotoData] = useState<string | null>(null);
+  const [modalStep, setModalStep] = useState<ModalStep>('camera');
+  const [workUpdate, setWorkUpdate] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
@@ -30,7 +36,7 @@ export default function DashboardPage() {
 
       const { data: userData } = await supabase
         .from('users').select('*').eq('auth_id', session.user.id).single();
-        
+
       if (userData) {
         setProfile(userData);
         const { data: attData } = await supabase
@@ -39,7 +45,7 @@ export default function DashboardPage() {
         if (attData) {
           setHistory(attData);
           const todayStr = new Date().toISOString().split('T')[0];
-          const today = attData.find(a => a.date === todayStr);
+          const today = attData.find((a: any) => a.date === todayStr);
           if (today) setTodayAttendance(today);
         }
       }
@@ -57,6 +63,8 @@ export default function DashboardPage() {
     setCameraMode(mode);
     setShowCamera(true);
     setPhotoData(null);
+    setModalStep('camera');
+    setWorkUpdate('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
@@ -70,6 +78,9 @@ export default function DashboardPage() {
   const closeCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     setShowCamera(false);
+    setPhotoData(null);
+    setModalStep('camera');
+    setWorkUpdate('');
   };
 
   const capturePhoto = () => {
@@ -89,10 +100,21 @@ export default function DashboardPage() {
 
   const retakePhoto = () => {
     setPhotoData(null);
+    setModalStep('camera');
     openCamera(cameraMode);
   };
 
-  const submitAttendance = () => {
+  // Setelah foto diambil: check-in langsung submit, check-out lanjut ke form
+  const handlePhotoCaptured = () => {
+    if (cameraMode === 'in') {
+      submitAttendance();
+    } else {
+      // Lanjut ke step form update kerja
+      setModalStep('form');
+    }
+  };
+
+  const submitAttendance = (extraWorkUpdate?: string) => {
     if (!profile || !photoData) return;
     setIsCheckingIn(true);
     if (!navigator.geolocation) {
@@ -104,11 +126,19 @@ export default function DashboardPage() {
       async (position) => {
         const { latitude, longitude } = position.coords;
         const endpoint = cameraMode === 'out' ? '/api/attendance/check-out' : '/api/attendance/check-in';
+        const update = extraWorkUpdate ?? workUpdate;
         try {
           const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ userId: profile.id, lat: latitude, lng: longitude, photoBase64: photoData, time: new Date().toISOString() })
+            body: JSON.stringify({
+              userId: profile.id,
+              lat: latitude,
+              lng: longitude,
+              photoBase64: photoData,
+              time: new Date().toISOString(),
+              ...(cameraMode === 'out' && { workUpdate: update })
+            })
           });
           const result = await res.json();
           if (res.ok) {
@@ -118,7 +148,7 @@ export default function DashboardPage() {
             if (data) {
               setHistory(data);
               const todayStr = new Date().toISOString().split('T')[0];
-              const today = data.find(a => a.date === todayStr);
+              const today = data.find((a: any) => a.date === todayStr);
               if (today) setTodayAttendance(today);
             }
           } else {
@@ -132,8 +162,14 @@ export default function DashboardPage() {
     );
   };
 
-  const handleCheckIn = () => { if (!profile || !photoData) return; setCameraMode('in'); submitAttendance(); };
-  const handleCheckOut = () => { if (!profile || !photoData) return; setCameraMode('out'); submitAttendance(); };
+  const handleCheckIn = () => submitAttendance();
+  const handleCheckOut = () => {
+    if (!workUpdate.trim()) {
+      alert("Mohon isi update kerja hari ini sebelum check-out.");
+      return;
+    }
+    submitAttendance(workUpdate);
+  };
 
   if (loading) {
     return (
@@ -161,16 +197,11 @@ export default function DashboardPage() {
           </div>
         </Link>
         <div className="flex items-center gap-3">
-          {/* Logo */}
           <div className="hidden sm:flex items-center gap-2 mr-2">
             <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-7 h-7 object-contain" />
             <span className="font-bold text-[#c04838] text-sm">Batik Seng</span>
           </div>
-          <button
-            onClick={handleLogout}
-            className="p-2 text-[#3e2723]/40 hover:text-[#c04838] hover:bg-red-50 rounded-lg transition-colors"
-            title="Keluar"
-          >
+          <button onClick={handleLogout} className="p-2 text-[#3e2723]/40 hover:text-[#c04838] hover:bg-red-50 rounded-lg transition-colors" title="Keluar">
             <LogOut size={20} />
           </button>
         </div>
@@ -239,7 +270,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* History */}
+        {/* Riwayat Absensi */}
         <div className="bg-white rounded-2xl shadow-[0_4px_20px_rgba(192,72,56,0.04)] border border-[#e8e0d8] overflow-hidden">
           <div className="px-6 py-4 border-b border-[#e8e0d8]">
             <h3 className="font-bold text-[#3e2723]">Riwayat Absensi Terakhir</h3>
@@ -249,26 +280,41 @@ export default function DashboardPage() {
               <div className="p-8 text-center text-[#3e2723]/40">Belum ada riwayat absensi.</div>
             ) : (
               history.slice(0, 7).map((att) => (
-                <div key={att.id} className="p-4 px-6 flex justify-between items-center hover:bg-[#faf8f5]">
-                  <div className="flex items-center gap-4">
-                    {att.check_in_photo && (
-                      <img src={att.check_in_photo} alt="Selfie" className="w-11 h-11 rounded-xl object-cover bg-[#faf8f5]" />
-                    )}
-                    <div>
-                      <p className="font-medium text-[#3e2723] text-sm">
-                        {new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
-                      </p>
-                      <p className="text-xs text-[#3e2723]/50 flex items-center gap-1 mt-0.5">
-                        <Clock size={12} />
-                        {new Date(att.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                <div key={att.id} className="p-4 px-6 hover:bg-[#faf8f5] transition-colors">
+                  <div className="flex justify-between items-start gap-4">
+                    {/* Kiri: foto + tanggal */}
+                    <div className="flex items-start gap-3">
+                      {att.check_in_photo && (
+                        <img src={att.check_in_photo} alt="Selfie" className="w-11 h-11 rounded-xl object-cover bg-[#faf8f5] shrink-0" />
+                      )}
+                      <div>
+                        <p className="font-medium text-[#3e2723] text-sm">
+                          {new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}
+                        </p>
+                        <p className="text-xs text-[#3e2723]/50 flex items-center gap-1 mt-0.5">
+                          <Clock size={12} />
+                          {new Date(att.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                          {att.check_out_time && (
+                            <> – {new Date(att.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                    {/* Kanan: status */}
+                    <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
+                      att.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                    }`}>
+                      {att.status}
+                    </span>
                   </div>
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    att.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                  }`}>
-                    {att.status}
-                  </span>
+
+                  {/* Update kerja — tampil kalau ada */}
+                  {att.work_update && (
+                    <div className="mt-3 flex items-start gap-2 bg-[#faf8f5] rounded-xl p-3 border border-[#e8e0d8]">
+                      <ClipboardList size={14} className="text-[#c04838] mt-0.5 shrink-0" />
+                      <p className="text-xs text-[#3e2723]/70 leading-relaxed">{att.work_update}</p>
+                    </div>
+                  )}
                 </div>
               ))
             )}
@@ -276,44 +322,100 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Camera Modal */}
+      {/* ===== CAMERA / FORM MODAL ===== */}
       {showCamera && (
         <div className="fixed inset-0 bg-[#3e2723]/80 z-[100] flex flex-col items-center justify-center p-4">
           <button onClick={closeCamera} className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors">
             <X size={24} />
           </button>
+
           <div className="w-full max-w-md bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
-            <div className="p-4 text-center border-b border-[#e8e0d8]">
-              <h3 className="font-bold text-[#3e2723]">{cameraMode === 'in' ? 'Selfie Check-In' : 'Selfie Check-Out'}</h3>
-              <p className="text-xs text-[#3e2723]/50 mt-0.5">Pastikan wajah terlihat jelas</p>
-            </div>
-            <div className="relative bg-[#3e2723] aspect-[3/4] w-full flex items-center justify-center overflow-hidden">
-              {!photoData ? (
-                <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
-              ) : (
-                <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
-              )}
-            </div>
-            <div className="p-6 bg-white flex flex-col gap-3">
-              {!photoData ? (
-                <button onClick={capturePhoto} className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)]">
-                  <Camera size={20} /> Ambil Foto
-                </button>
-              ) : (
-                <>
+
+            {/* ---- STEP 1: KAMERA ---- */}
+            {modalStep === 'camera' && (
+              <>
+                <div className="p-4 text-center border-b border-[#e8e0d8]">
+                  <h3 className="font-bold text-[#3e2723]">{cameraMode === 'in' ? 'Selfie Check-In' : 'Selfie Check-Out'}</h3>
+                  <p className="text-xs text-[#3e2723]/50 mt-0.5">Pastikan wajah terlihat jelas</p>
+                </div>
+                <div className="relative bg-[#3e2723] aspect-[3/4] w-full overflow-hidden">
+                  {!photoData ? (
+                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
+                  ) : (
+                    <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
+                  )}
+                </div>
+                <div className="p-6 bg-white flex flex-col gap-3">
+                  {!photoData ? (
+                    <button onClick={capturePhoto} className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)]">
+                      <Camera size={20} /> Ambil Foto
+                    </button>
+                  ) : (
+                    <>
+                      {/* Check-in: langsung kirim. Check-out: lanjut ke form */}
+                      <button
+                        onClick={handlePhotoCaptured}
+                        disabled={isCheckingIn}
+                        className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+                      >
+                        {isCheckingIn
+                          ? "Mendeteksi Lokasi GPS..."
+                          : cameraMode === 'in'
+                            ? "Kirim Check-In"
+                            : "Lanjut — Isi Update Kerja →"}
+                      </button>
+                      <button onClick={retakePhoto} disabled={isCheckingIn} className="w-full py-3 bg-[#faf8f5] hover:bg-[#f0ebe4] text-[#3e2723] rounded-xl font-semibold border border-[#e8e0d8] text-sm">
+                        Ulangi Foto
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            )}
+
+            {/* ---- STEP 2: FORM UPDATE KERJA (check-out saja) ---- */}
+            {modalStep === 'form' && (
+              <>
+                <div className="p-4 text-center border-b border-[#e8e0d8]">
+                  <h3 className="font-bold text-[#3e2723]">Update Kerja Hari Ini</h3>
+                  <p className="text-xs text-[#3e2723]/50 mt-0.5">Ceritakan apa yang dikerjakan hari ini</p>
+                </div>
+
+                {/* Preview foto kecil */}
+                <div className="px-6 pt-5 flex items-center gap-3">
+                  {photoData && (
+                    <img src={photoData} alt="Selfie" className="w-12 h-12 rounded-xl object-cover transform -scale-x-100 border border-[#e8e0d8]" />
+                  )}
+                  <div>
+                    <p className="text-xs font-semibold text-[#3e2723]">Foto check-out tersimpan</p>
+                    <button onClick={() => setModalStep('camera')} className="text-xs text-[#c04838] hover:underline mt-0.5">
+                      Ganti foto
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-6 flex flex-col gap-4">
+                  <textarea
+                    value={workUpdate}
+                    onChange={e => setWorkUpdate(e.target.value)}
+                    placeholder="Contoh: Menyelesaikan motif batik parang untuk pesanan 50 pcs, koordinasi dengan tim packaging..."
+                    rows={5}
+                    className="w-full px-4 py-3 border border-[#e8e0d8] focus:border-[#c04838] focus:ring-4 focus:ring-[#c04838]/10 rounded-2xl outline-none text-[#3e2723] text-sm placeholder:text-[#3e2723]/30 resize-none leading-relaxed transition-all"
+                    autoFocus
+                  />
+                  <p className="text-xs text-[#3e2723]/40 -mt-2">{workUpdate.length} karakter{workUpdate.length < 10 && workUpdate.length > 0 ? ' — minimal 10 karakter' : ''}</p>
+
                   <button
-                    onClick={cameraMode === 'in' ? handleCheckIn : handleCheckOut}
-                    disabled={isCheckingIn}
-                    className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+                    onClick={handleCheckOut}
+                    disabled={isCheckingIn || workUpdate.trim().length < 10}
+                    className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
                   >
-                    {isCheckingIn ? "Mendeteksi Lokasi GPS..." : cameraMode === 'in' ? "Kirim Check-In" : "Kirim Check-Out"}
+                    {isCheckingIn ? "Mendeteksi Lokasi GPS..." : "Kirim Check-Out"}
                   </button>
-                  <button onClick={retakePhoto} disabled={isCheckingIn} className="w-full py-3 bg-[#faf8f5] hover:bg-[#f0ebe4] text-[#3e2723] rounded-xl font-semibold border border-[#e8e0d8]">
-                    Ulangi Foto
-                  </button>
-                </>
-              )}
-            </div>
+                </div>
+              </>
+            )}
+
           </div>
         </div>
       )}

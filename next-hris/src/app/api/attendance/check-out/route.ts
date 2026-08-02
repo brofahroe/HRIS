@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await request.json();
-    const { userId, lat, lng, photoBase64, time } = body;
+    const { userId, lat, lng, photoBase64, time, workUpdate } = body;
 
     if (!userId || !lat || !lng) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Update baris attendance
+    // 5. Update baris attendance — simpan work_update ke kolom tersendiri dan totalJam ke notes
     const notes = normalizeNotes(existing.notes, totalHours);
 
     const { data, error } = await supabaseAdmin
@@ -136,7 +136,8 @@ export async function POST(request: Request) {
         check_out_lat: lat,
         check_out_lng: lng,
         check_out_photo: photoUrl,
-        notes: notes
+        notes: notes,
+        work_update: workUpdate ? workUpdate.trim() : null
       })
       .eq('id', existing.id)
       .select()

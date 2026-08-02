@@ -85,7 +85,21 @@ export async function updateUser(userId: string, data: any) {
   }
 }
 
-export async function deleteUser(userId: string, authId: string) {
+export async function resetPassword(authId: string, newPassword: string) {
+  try {
+    if (!authId) return { success: false, error: "Auth ID tidak ditemukan." };
+    if (newPassword.length < 6) return { success: false, error: "Password minimal 6 karakter." };
+
+    const { error } = await supabase.auth.admin.updateUserById(authId, {
+      password: newPassword
+    });
+
+    if (error) throw error;
+    return { success: true };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
   try {
     // 1. Hapus dari public.users
     const { error: dbError } = await supabase

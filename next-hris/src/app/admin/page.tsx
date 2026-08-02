@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users, UserCheck, Clock, FileWarning } from "lucide-react";
+import { Users, UserCheck, Clock, FileWarning, ClipboardList } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AdminDashboard() {
@@ -84,32 +84,46 @@ export default function AdminDashboard() {
             <thead>
               <tr className="bg-[#faf8f5] text-[#3e2723]/50 text-xs font-semibold uppercase tracking-wider">
                 <th className="px-6 py-3">Karyawan</th>
-                <th className="px-6 py-3">Waktu Check-In</th>
-                <th className="px-6 py-3">Foto Selfie</th>
+                <th className="px-6 py-3">Check-In / Out</th>
+                <th className="px-6 py-3">Foto</th>
+                <th className="px-6 py-3">Update Kerja</th>
                 <th className="px-6 py-3">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0ebe4]">
               {recentActivity.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-6 py-10 text-center text-[#3e2723]/40">
+                  <td colSpan={5} className="px-6 py-10 text-center text-[#3e2723]/40">
                     Belum ada karyawan yang absen hari ini.
                   </td>
                 </tr>
               ) : (
                 recentActivity.map(att => (
-                  <tr key={att.id} className="hover:bg-[#faf8f5] transition-colors">
-                    <td className="px-6 py-4 font-medium text-[#3e2723]">
+                  <tr key={att.id} className="hover:bg-[#faf8f5] transition-colors align-top">
+                    <td className="px-6 py-4 font-medium text-[#3e2723] text-sm">
                       {att.users?.full_name || 'Karyawan'}
                     </td>
-                    <td className="px-6 py-4 text-[#3e2723]/60 text-sm">
-                      {new Date(att.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
+                    <td className="px-6 py-4 text-[#3e2723]/60 text-xs">
+                      <div>Masuk: {new Date(att.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                      {att.check_out_time && (
+                        <div className="mt-0.5">Pulang: {new Date(att.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</div>
+                      )}
                     </td>
                     <td className="px-6 py-4">
                       {att.check_in_photo ? (
                         <img src={att.check_in_photo} alt="Selfie" className="w-10 h-10 rounded-lg object-cover bg-[#faf8f5]" />
                       ) : (
-                        <span className="text-xs text-[#3e2723]/30">Tidak ada foto</span>
+                        <span className="text-xs text-[#3e2723]/30">–</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 max-w-xs">
+                      {att.work_update ? (
+                        <div className="flex items-start gap-1.5">
+                          <ClipboardList size={13} className="text-[#c04838] mt-0.5 shrink-0" />
+                          <p className="text-xs text-[#3e2723]/70 leading-relaxed line-clamp-3">{att.work_update}</p>
+                        </div>
+                      ) : (
+                        <span className="text-xs text-[#3e2723]/30">Belum check-out</span>
                       )}
                     </td>
                     <td className="px-6 py-4">

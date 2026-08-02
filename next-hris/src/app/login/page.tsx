@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 
+const EMAIL_DOMAIN = "@batikseng.com";
+
 export default function LoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -18,11 +20,11 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
+    // Gabungkan username + domain jadi email lengkap
+    const email = username.trim().toLowerCase() + EMAIL_DOMAIN;
+
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
       if (error) {
         setError("Username atau password salah");
@@ -31,7 +33,6 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        // Ambil role dari tabel users untuk menentukan halaman tujuan
         const { data: userData } = await supabase
           .from('users')
           .select('role')
@@ -53,7 +54,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#faf8f5] flex flex-col relative overflow-hidden text-[#3e2723]">
       
-      {/* Top Right Badge (Hidden on mobile) */}
+      {/* Top Right Badge */}
       <div className="hidden md:flex absolute top-8 right-12 items-center gap-2 bg-white/60 backdrop-blur-md px-4 py-2 rounded-full border border-red-100 text-sm font-medium text-[#c04838]">
         Selfie & GPS Verified
       </div>
@@ -63,8 +64,6 @@ export default function LoginPage() {
           
           {/* Left Column: Hero Text */}
           <div className="flex flex-col space-y-8">
-            
-            {/* Logo area */}
             <div className="flex items-center gap-3 mb-4 lg:mb-12">
               <img src="/Batik Seng-01.png" alt="Batik Seng" className="h-14 object-contain" />
             </div>
@@ -74,30 +73,21 @@ export default function LoginPage() {
                 <div className="w-12 h-px bg-[#c04838]"></div>
                 <span className="text-xs font-bold tracking-[0.2em] text-[#c04838] uppercase">Employee Workspace</span>
               </div>
-              
               <h1 className="font-serif text-5xl lg:text-7xl font-bold text-[#c04838] leading-[1.1] mb-6">
                 Kehadiran yang<br />tertata.
               </h1>
-              
               <p className="text-lg lg:text-xl text-[#3e2723]/70 max-w-lg leading-relaxed">
                 Portal internal Batik Seng untuk pencatatan kehadiran, verifikasi lokasi, dan dokumentasi selfie yang ringkas dalam satu alur.
               </p>
             </div>
 
-            {/* Features Tags */}
             <div className="flex flex-wrap gap-4 mt-4">
-              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-[#3e2723]/70">
-                <div className="w-2 h-2 rounded-full bg-[#c04838]"></div>
-                GPS verified
-              </div>
-              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-[#3e2723]/70">
-                <div className="w-2 h-2 rounded-full bg-[#c04838]"></div>
-                Selfie attendance
-              </div>
-              <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-[#3e2723]/70">
-                <div className="w-2 h-2 rounded-full bg-[#c04838]"></div>
-                Payroll recap
-              </div>
+              {["GPS verified", "Selfie attendance", "Payroll recap"].map(tag => (
+                <div key={tag} className="flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-slate-200 text-sm font-medium text-[#3e2723]/70">
+                  <div className="w-2 h-2 rounded-full bg-[#c04838]"></div>
+                  {tag}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -109,7 +99,7 @@ export default function LoginPage() {
                 <span className="text-[#c04838] text-[10px] uppercase font-bold tracking-widest mb-3 block">Portal Karyawan</span>
                 <h2 className="font-serif text-4xl font-bold text-[#3e2723] mb-3">Selamat datang</h2>
                 <p className="text-sm text-[#3e2723]/60 leading-relaxed">
-                  Gunakan akun internal Anda untuk melanjutkan ke halaman absensi.
+                  Masukkan username akun internal Anda untuk melanjutkan.
                 </p>
               </div>
 
@@ -120,27 +110,36 @@ export default function LoginPage() {
               )}
 
               <form onSubmit={handleLogin} className="space-y-6">
+                {/* Username field dengan domain tertempel */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-[#3e2723]">Username</label>
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="Masukkan username (email)"
-                    className="w-full px-5 py-4 bg-white border border-slate-200 focus:border-[#c04838] focus:ring-4 focus:ring-[#c04838]/10 rounded-xl outline-none transition-all text-[#3e2723] placeholder:text-slate-400"
-                    required
-                  />
+                  <div className="flex items-stretch border border-slate-200 focus-within:border-[#c04838] focus-within:ring-4 focus-within:ring-[#c04838]/10 rounded-xl overflow-hidden transition-all bg-white">
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.replace(/\s/g, '').toLowerCase())}
+                      placeholder="nama.anda"
+                      className="flex-1 px-5 py-4 outline-none text-[#3e2723] placeholder:text-slate-400 bg-transparent text-sm"
+                      required
+                      autoComplete="username"
+                      autoCapitalize="none"
+                    />
+                    <div className="flex items-center pr-5 text-sm font-medium text-[#3e2723]/40 select-none whitespace-nowrap">
+                      {EMAIL_DOMAIN}
+                    </div>
+                  </div>
                 </div>
 
+                {/* Password */}
                 <div className="space-y-2">
                   <label className="text-sm font-semibold text-[#3e2723]">Password</label>
-                  <div className="relative">
+                  <div className="relative border border-slate-200 focus-within:border-[#c04838] focus-within:ring-4 focus-within:ring-[#c04838]/10 rounded-xl overflow-hidden transition-all bg-white">
                     <input
                       type={showPassword ? "text" : "password"}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Masukkan password"
-                      className="w-full px-5 py-4 bg-white border border-slate-200 focus:border-[#c04838] focus:ring-4 focus:ring-[#c04838]/10 rounded-xl outline-none transition-all text-[#3e2723] placeholder:text-slate-400 pr-12"
+                      className="w-full px-5 py-4 outline-none text-[#3e2723] placeholder:text-slate-400 bg-transparent pr-12 text-sm"
                       required
                     />
                     <button

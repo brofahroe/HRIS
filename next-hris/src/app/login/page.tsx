@@ -24,9 +24,19 @@ export default function LoginPage() {
       });
 
       if (error) throw error;
-      if (data.session) {
-        // Redirect based on role or just go to dashboard
-        router.push("/dashboard");
+      if (data.user) {
+        // Ambil role dari tabel users untuk menentukan halaman tujuan
+        const { data: userData } = await supabase
+          .from('users')
+          .select('role')
+          .eq('auth_id', data.user.id)
+          .single();
+
+        if (userData?.role === 'Admin') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
       }
     } catch (err: any) {
       setError(err.message || "Gagal login. Silakan periksa kredensial Anda.");

@@ -3,13 +3,11 @@ const csv = require('csv-parser');
 require('dotenv').config({ path: '.env.local' });
 const { createClient } = require('@supabase/supabase-js');
 
-// Konfigurasi Supabase
-// Gunakan Service Role Key untuk bypass RLS saat migrasi. Jika menggunakan Anon Key, pastikan RLS di Supabase dilonggarkan sementara.
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 if (!supabaseUrl || !supabaseUrl.startsWith('http')) {
-  console.error("ERROR: NEXT_PUBLIC_SUPABASE_URL di .env.local tidak valid atau tidak terbaca.");
+  console.error("ERROR: NEXT_PUBLIC_SUPABASE_URL di .env.local tidak valid.");
   process.exit(1);
 }
 
@@ -20,36 +18,57 @@ async function migrateUsers(csvPath) {
   
   console.log('Membaca file users.csv...');
   
-  // Baca file CSV yang diexport dari Google Sheets
   fs.createReadStream(csvPath)
     .pipe(csv())
     .on('data', (data) => users.push(data))
     .on('end', async () => {
-      console.log(`Ditemukan ${users.length} data karyawan. Mulai migrasi ke Supabase...`);
-      
-      let successCount = 0;
-      let errorCount = 0;
+      console.log(`Ditemukan ${users.length} data karyawan. Mulai registrasi ke Supabase Auth & Database...`);
+      let success = 0;
+      let failed = 0;
 
       for (const user of users) {
         try {
-          // 1. Buat Auth User di Supabase (Opsional: Jika ingin otomatis buat akun login)
-          /*
-          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-            email: user.Email,
-            password: 'Password123!', // Password default sementara
-            email_confirm: true
-          });
-          if (authError) throw authError;
-          */
+          const email = user.email || user.Username;
+          const nik = user.NIK;
+          
+          // KARENA PASSWORD LAMA BERUPA HASH, KITA BUATKAN PASSWORD DEFAULT
+          // Format: Batikseng + NIK (Contoh: Batikseng350711)
+          const password = `Batikseng${nik}`;
 
-          // 2. Insert ke tabel public.users
+          if (!email || !nik) {
+            console.error(`[SKIP] Baris dilewati karena NIK atau Email kosong: ${user.NamaLengkap}`);
+            failed++;
+            continue;
+          }
+
+          // 1. Buat Akun di Supabase Auth (Supaya bisa Login)
+          const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+            email: email,
+            password: password,
+            email_confirm: true // Langsung aktif tanpa perlu verifikasi email
+          });
+
+          if (authError) {
+             // Jika error karena email sudah terdaftar, kita skip atau tangani
+             if (authError.message.includes('already registered')) {
+                console.error(`[ERROR] Gagal registrasi Auth: Email ${email} sudah terdaftar.`);
+             } else {
+                console.error(`[ERROR] Gagal registrasi Auth NIK ${nik}:`, authError.message);
+             }
+             failed++;
+             continue;
+          }
+
+          const authId = authData.user.id;
+
+          // 2. Simpan profil lengkap ke tabel public.users
           const { error: insertError } = await supabase
             .from('users')
             .insert({
-              // Sesuaikan mapping ini dengan nama kolom di CSV Google Sheets Anda
-              nik: user.NIK,
+              auth_id: authId, // Hubungkan dengan ID Auth yang baru dibuat
+              nik: nik,
               full_name: user.NamaLengkap,
-              email: user.email || user.Username, // Menggunakan lowercase 'email' sesuai CSV Anda
+              email: email,
               role: user.Role === 'Admin' ? 'Admin' : 'Employee',
               position: user.Jabatan,
               division: user.Divisi,
@@ -58,26 +77,30 @@ async function migrateUsers(csvPath) {
               is_active: String(user.StatusAktif).toUpperCase() === 'TRUE'
             });
 
-          if (insertError) throw insertError;
-          successCount++;
-          console.log(`[SUCCESS] Migrasi data NIK: ${user.NIK}`);
+          if (insertError) {
+            console.error(`[ERROR] Gagal simpan profil NIK ${nik}:`, insertError.message);
+            // Opsional: Hapus auth user jika profil gagal dibuat
+            await supabase.auth.admin.deleteUser(authId);
+            failed++;
+          } else {
+            success++;
+          }
+
         } catch (err) {
-          errorCount++;
-          console.error(`[ERROR] Gagal migrasi NIK: ${user.NIK}`, err.message);
+          console.error(`[ERROR] Terjadi kesalahan sistem:`, err.message);
+          failed++;
         }
       }
-      
-      console.log('====================================');
-      console.log(`Migrasi Selesai! Sukses: ${successCount}, Gagal: ${errorCount}`);
-      console.log('====================================');
+
+      console.log('========================');
+      console.log(`Migrasi Selesai! Sukses: ${success}, Gagal: ${failed}`);
+      console.log('========================');
     });
 }
 
 const csvPath = require('path').join(__dirname, 'users.csv');
-
-// Pastikan file users.csv ada di direktori yang sama sebelum menjalankan
 if (fs.existsSync(csvPath)) {
   migrateUsers(csvPath);
 } else {
-  console.error("File users.csv tidak ditemukan! Silakan export Sheet 'Users' dari Google Sheets sebagai CSV dan simpan di folder scripts ini.");
+  console.error("File users.csv tidak ditemukan!");
 }

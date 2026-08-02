@@ -4,10 +4,10 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList } from "lucide-react";
+import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2 } from "lucide-react";
 
-// Step dalam modal check-out: 'camera' → ambil foto, 'form' → isi update kerja
 type ModalStep = 'camera' | 'form';
+type OvertimeStatus = 'idle' | 'pending' | 'approved' | 'rejected';
 
 export default function DashboardPage() {
   const router = useRouter();
@@ -18,6 +18,15 @@ export default function DashboardPage() {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+
+  // Off-day / overtime state
+  const [isOffDay, setIsOffDay] = useState(false);
+  const [offDayLabel, setOffDayLabel] = useState('');
+  const [overtimeStatus, setOvertimeStatus] = useState<OvertimeStatus>('idle');
+  const [overtimeRequestId, setOvertimeRequestId] = useState<string | null>(null);
+  const [showOvertimeForm, setShowOvertimeForm] = useState(false);
+  const [overtimeReason, setOvertimeReason] = useState('');
+  const [submittingOvertime, setSubmittingOvertime] = useState(false);
 
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
@@ -48,6 +57,43 @@ export default function DashboardPage() {
           const today = attData.find((a: any) => a.date === todayStr);
           if (today) setTodayAttendance(today);
         }
+
+        // Cek apakah hari ini hari libur/minggu
+        const todayStr = new Date().toISOString().split('T')[0];
+        const dow = new Date().getDay(); // 0=Minggu, 6=Sabtu
+        let offDay = false;
+        let label = '';
+
+        if (dow === 0) { offDay = true; label = 'Hari Minggu'; }
+
+        if (!offDay) {
+          try {
+            const year = new Date().getFullYear();
+            const res = await fetch(`https://api-harilibur.vercel.app/api?year=${year}`);
+            if (res.ok) {
+              const holidays = await res.json();
+              const match = holidays.find((h: any) => h.holiday_date === todayStr && h.is_national_holiday);
+              if (match) { offDay = true; label = match.holiday_name; }
+            }
+          } catch { /* fallback ke deteksi Minggu saja */ }
+        }
+
+        setIsOffDay(offDay);
+        setOffDayLabel(label);
+
+        // Cek status permohonan lembur hari ini (kalau off day)
+        if (offDay) {
+          const { data: otReq } = await supabase
+            .from('overtime_requests')
+            .select('id, status')
+            .eq('user_id', userData.id)
+            .eq('date', todayStr)
+            .single();
+          if (otReq) {
+            setOvertimeRequestId(otReq.id);
+            setOvertimeStatus(otReq.status as OvertimeStatus);
+          }
+        }
       }
       setLoading(false);
     };
@@ -57,6 +103,30 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push("/login");
+  };
+
+  // Submit permohonan lembur
+  const handleOvertimeSubmit = async () => {
+    if (!profile || !overtimeReason.trim()) return;
+    setSubmittingOvertime(true);
+    const todayStr = new Date().toISOString().split('T')[0];
+    try {
+      const res = await fetch('/api/overtime/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: profile.id, date: todayStr, reason: overtimeReason }),
+      });
+      const result = await res.json();
+      if (res.ok && result.success) {
+        setOvertimeRequestId(result.data.id);
+        setOvertimeStatus(result.data.status as OvertimeStatus);
+        setShowOvertimeForm(false);
+        alert(result.message);
+      } else {
+        alert(result.error || 'Gagal mengajukan permohonan.');
+      }
+    } catch { alert('Terjadi kesalahan jaringan.'); }
+    finally { setSubmittingOvertime(false); }
   };
 
   const openCamera = async (mode: 'in' | 'out' = 'in') => {
@@ -70,7 +140,7 @@ export default function DashboardPage() {
       streamRef.current = stream;
       if (videoRef.current) videoRef.current.srcObject = stream;
     } catch {
-      alert("Gagal mengakses kamera. Pastikan Anda telah memberikan izin kamera.");
+      alert("Gagal mengakses kamera.");
       setShowCamera(false);
     }
   };
@@ -98,29 +168,18 @@ export default function DashboardPage() {
     }
   };
 
-  const retakePhoto = () => {
-    setPhotoData(null);
-    setModalStep('camera');
-    openCamera(cameraMode);
-  };
+  const retakePhoto = () => { setPhotoData(null); setModalStep('camera'); openCamera(cameraMode); };
 
-  // Setelah foto diambil: check-in langsung submit, check-out lanjut ke form
   const handlePhotoCaptured = () => {
-    if (cameraMode === 'in') {
-      submitAttendance();
-    } else {
-      // Lanjut ke step form update kerja
-      setModalStep('form');
-    }
+    if (cameraMode === 'in') submitAttendance();
+    else setModalStep('form');
   };
 
   const submitAttendance = (extraWorkUpdate?: string) => {
     if (!profile || !photoData) return;
     setIsCheckingIn(true);
     if (!navigator.geolocation) {
-      alert("GPS tidak didukung di browser ini.");
-      setIsCheckingIn(false);
-      return;
+      alert("GPS tidak didukung."); setIsCheckingIn(false); return;
     }
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -132,12 +191,10 @@ export default function DashboardPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: profile.id,
-              lat: latitude,
-              lng: longitude,
-              photoBase64: photoData,
-              time: new Date().toISOString(),
-              ...(cameraMode === 'out' && { workUpdate: update })
+              userId: profile.id, lat: latitude, lng: longitude,
+              photoBase64: photoData, time: new Date().toISOString(),
+              ...(cameraMode === 'out' && { workUpdate: update }),
+              ...(cameraMode === 'in' && isOffDay && overtimeRequestId && { overtimeRequestId }),
             })
           });
           const result = await res.json();
@@ -152,22 +209,18 @@ export default function DashboardPage() {
               if (today) setTodayAttendance(today);
             }
           } else {
-            alert("Gagal Absen: " + result.error + (result.distance ? ` (Jarak Anda: ${result.distance})` : ''));
+            alert("Gagal Absen: " + result.error + (result.distance ? ` (${result.distance})` : ''));
           }
         } catch { alert("Terjadi kesalahan jaringan."); }
         finally { setIsCheckingIn(false); }
       },
-      () => { alert("Gagal mendapatkan lokasi. Pastikan GPS menyala."); setIsCheckingIn(false); },
+      () => { alert("Gagal mendapatkan lokasi GPS."); setIsCheckingIn(false); },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  const handleCheckIn = () => submitAttendance();
   const handleCheckOut = () => {
-    if (!workUpdate.trim()) {
-      alert("Mohon isi update kerja hari ini sebelum check-out.");
-      return;
-    }
+    if (!workUpdate.trim()) { alert("Mohon isi update kerja hari ini."); return; }
     submitAttendance(workUpdate);
   };
 
@@ -179,17 +232,22 @@ export default function DashboardPage() {
     );
   }
 
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  // Apakah boleh check-in hari ini?
+  // - Hari biasa: selalu boleh
+  // - Hari libur/Minggu: hanya boleh jika lembur sudah approved
+  const canCheckIn = !isOffDay || overtimeStatus === 'approved';
+
   return (
     <div className="min-h-screen bg-[#faf8f5]">
       {/* Header */}
       <header className="bg-white border-b border-[#e8e0d8] px-6 py-4 flex items-center justify-between sticky top-0 z-50">
         <Link href="/dashboard/profile" className="flex items-center gap-3 group hover:opacity-80 transition-opacity">
           <div className="w-10 h-10 rounded-full bg-red-50 text-[#c04838] flex items-center justify-center font-bold overflow-hidden border-2 border-red-100 group-hover:border-[#c04838]/30 transition-colors text-sm">
-            {profile?.photo_url ? (
-              <img src={profile.photo_url} alt="Profile" className="w-full h-full object-cover" />
-            ) : (
-              profile?.full_name?.charAt(0) || "U"
-            )}
+            {profile?.photo_url
+              ? <img src={profile.photo_url} alt="Profile" className="w-full h-full object-cover" />
+              : profile?.full_name?.charAt(0) || "U"}
           </div>
           <div>
             <h1 className="font-bold text-[#3e2723] leading-tight">{profile?.full_name || "Memuat..."}</h1>
@@ -208,6 +266,47 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 md:p-6 space-y-5">
+
+        {/* Banner Hari Libur/Minggu */}
+        {isOffDay && (
+          <div className={`rounded-2xl p-4 border flex flex-col gap-3 ${
+            overtimeStatus === 'approved' ? 'bg-green-50 border-green-200' :
+            overtimeStatus === 'rejected' ? 'bg-red-50 border-red-200' :
+            'bg-amber-50 border-amber-200'
+          }`}>
+            <div className="flex items-start gap-3">
+              <AlertTriangle size={18} className={`shrink-0 mt-0.5 ${
+                overtimeStatus === 'approved' ? 'text-green-600' :
+                overtimeStatus === 'rejected' ? 'text-red-500' : 'text-amber-600'
+              }`} />
+              <div>
+                <p className="font-semibold text-sm text-[#3e2723]">
+                  {offDayLabel || 'Hari Libur'} — Hari tidak masuk kerja
+                </p>
+                <p className="text-xs text-[#3e2723]/60 mt-0.5">
+                  {overtimeStatus === 'idle' && 'Untuk bekerja hari ini, ajukan permohonan lembur terlebih dahulu.'}
+                  {overtimeStatus === 'pending' && 'Permohonan lembur Anda sedang menunggu persetujuan admin.'}
+                  {overtimeStatus === 'approved' && 'Lembur disetujui. Anda dapat melakukan check-in.'}
+                  {overtimeStatus === 'rejected' && 'Permohonan lembur ditolak. Anda tidak dapat check-in hari ini.'}
+                </p>
+              </div>
+            </div>
+            {overtimeStatus === 'idle' && (
+              <button
+                onClick={() => setShowOvertimeForm(true)}
+                className="w-full py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-semibold text-sm transition-all shadow-md"
+              >
+                Ajukan Permohonan Lembur
+              </button>
+            )}
+            {overtimeStatus === 'pending' && (
+              <div className="flex items-center gap-2 text-amber-700 text-xs font-medium">
+                <Loader2 size={13} className="animate-spin" /> Menunggu konfirmasi admin...
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Attendance Card */}
         <div className="bg-white rounded-[1.5rem] p-6 shadow-[0_4px_20px_rgba(192,72,56,0.06)] border border-red-50 flex flex-col items-center py-10">
           <div className="text-center mb-8">
@@ -216,6 +315,11 @@ export default function DashboardPage() {
             <p className="text-sm text-[#3e2723]/50 flex items-center justify-center gap-1">
               <MapPin size={14} /> Galeri / Sanggar Batik
             </p>
+            {isOffDay && overtimeStatus === 'approved' && (
+              <span className="mt-2 inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold">
+                ✓ Lembur Disetujui
+              </span>
+            )}
           </div>
 
           <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm mt-2">
@@ -226,13 +330,9 @@ export default function DashboardPage() {
                   Sudah Absen ({new Date(todayAttendance.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })})
                 </button>
                 {!todayAttendance.check_out_time ? (
-                  <button
-                    onClick={() => openCamera('out')}
-                    disabled={isCheckingIn}
-                    className="flex-1 py-4 bg-[#3e2723] hover:bg-[#2a1a17] active:scale-95 disabled:opacity-70 text-white rounded-2xl font-semibold shadow-lg flex flex-col items-center gap-1 text-sm transition-all"
-                  >
-                    <Camera size={22} />
-                    Check Out (Selfie)
+                  <button onClick={() => openCamera('out')} disabled={isCheckingIn}
+                    className="flex-1 py-4 bg-[#3e2723] hover:bg-[#2a1a17] active:scale-95 disabled:opacity-70 text-white rounded-2xl font-semibold shadow-lg flex flex-col items-center gap-1 text-sm transition-all">
+                    <Camera size={22} /> Check Out (Selfie)
                   </button>
                 ) : (
                   <button disabled className="flex-1 py-4 bg-[#faf8f5] text-[#3e2723]/50 border border-[#e8e0d8] rounded-2xl font-semibold flex flex-col items-center gap-1 text-sm">
@@ -241,14 +341,16 @@ export default function DashboardPage() {
                   </button>
                 )}
               </>
+            ) : canCheckIn ? (
+              <button onClick={() => openCamera('in')} disabled={isCheckingIn}
+                className="flex-1 py-4 bg-[#c04838] hover:bg-[#98382d] active:scale-95 disabled:opacity-70 transition-all text-white rounded-2xl font-bold shadow-[0_8px_20px_rgba(192,72,56,0.25)] flex flex-col items-center gap-1">
+                <Camera size={22} /> Check In (Selfie)
+              </button>
             ) : (
-              <button
-                onClick={() => openCamera('in')}
-                disabled={isCheckingIn}
-                className="flex-1 py-4 bg-[#c04838] hover:bg-[#98382d] active:scale-95 disabled:opacity-70 transition-all text-white rounded-2xl font-bold shadow-[0_8px_20px_rgba(192,72,56,0.25)] flex flex-col items-center gap-1"
-              >
+              <button disabled className="flex-1 py-4 bg-[#faf8f5] text-[#3e2723]/30 border border-[#e8e0d8] rounded-2xl font-semibold flex flex-col items-center gap-1 text-sm cursor-not-allowed">
                 <Camera size={22} />
-                Check In (Selfie)
+                {overtimeStatus === 'pending' ? 'Menunggu Persetujuan Lembur' :
+                 overtimeStatus === 'rejected' ? 'Lembur Ditolak' : 'Ajukan Lembur Dahulu'}
               </button>
             )}
           </div>
@@ -282,7 +384,6 @@ export default function DashboardPage() {
               history.slice(0, 7).map((att) => (
                 <div key={att.id} className="p-4 px-6 hover:bg-[#faf8f5] transition-colors">
                   <div className="flex justify-between items-start gap-4">
-                    {/* Kiri: foto + tanggal */}
                     <div className="flex items-start gap-3">
                       {att.check_in_photo && (
                         <img src={att.check_in_photo} alt="Selfie" className="w-11 h-11 rounded-xl object-cover bg-[#faf8f5] shrink-0" />
@@ -294,21 +395,21 @@ export default function DashboardPage() {
                         <p className="text-xs text-[#3e2723]/50 flex items-center gap-1 mt-0.5">
                           <Clock size={12} />
                           {new Date(att.check_in_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}
-                          {att.check_out_time && (
-                            <> – {new Date(att.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</>
-                          )}
+                          {att.check_out_time && <> – {new Date(att.check_out_time).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}</>}
                         </p>
                       </div>
                     </div>
-                    {/* Kanan: status */}
-                    <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-semibold ${
-                      att.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
-                    }`}>
-                      {att.status}
-                    </span>
+                    <div className="flex flex-col items-end gap-1 shrink-0">
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        att.status === 'Hadir' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'
+                      }`}>{att.status}</span>
+                      {att.is_overtime && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-100 text-purple-700">
+                          Lembur {att.overtime_hours ? `${att.overtime_hours}j` : ''}
+                        </span>
+                      )}
+                    </div>
                   </div>
-
-                  {/* Update kerja — tampil kalau ada */}
                   {att.work_update && (
                     <div className="mt-3 flex items-start gap-2 bg-[#faf8f5] rounded-xl p-3 border border-[#e8e0d8]">
                       <ClipboardList size={14} className="text-[#c04838] mt-0.5 shrink-0" />
@@ -322,28 +423,67 @@ export default function DashboardPage() {
         </div>
       </main>
 
+      {/* ===== OVERTIME REQUEST MODAL ===== */}
+      {showOvertimeForm && (
+        <div className="fixed inset-0 bg-[#3e2723]/70 z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
+            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8]">
+              <div>
+                <h3 className="font-serif text-xl font-bold text-[#3e2723]">Permohonan Lembur</h3>
+                <p className="text-xs text-[#3e2723]/50 mt-0.5">{offDayLabel} — {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+              </div>
+              <button onClick={() => setShowOvertimeForm(false)} className="text-[#3e2723]/40 hover:text-[#c04838] transition-colors">
+                <X size={22} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
+                Hari ini adalah hari libur. Untuk bekerja, ajukan permohonan lembur. Jam lembur akan dihitung <strong>2× jam kerja aktual</strong> setelah disetujui admin.
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Alasan Lembur</label>
+                <textarea
+                  value={overtimeReason}
+                  onChange={e => setOvertimeReason(e.target.value)}
+                  placeholder="Contoh: Menyelesaikan pesanan mendesak 200 pcs untuk acara hari Senin..."
+                  rows={4}
+                  className="w-full px-4 py-3 border border-[#e8e0d8] focus:border-[#c04838] focus:ring-4 focus:ring-[#c04838]/10 rounded-2xl outline-none text-[#3e2723] text-sm placeholder:text-[#3e2723]/30 resize-none leading-relaxed transition-all"
+                  autoFocus
+                />
+                <p className="text-xs text-[#3e2723]/40">{overtimeReason.length} karakter</p>
+              </div>
+              <button
+                onClick={handleOvertimeSubmit}
+                disabled={submittingOvertime || overtimeReason.trim().length < 10}
+                className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
+              >
+                {submittingOvertime ? <><Loader2 size={18} className="animate-spin" /> Mengajukan...</> : 'Ajukan Permohonan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ===== CAMERA / FORM MODAL ===== */}
       {showCamera && (
         <div className="fixed inset-0 bg-[#3e2723]/80 z-[100] flex flex-col items-center justify-center p-4">
           <button onClick={closeCamera} className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors">
             <X size={24} />
           </button>
-
           <div className="w-full max-w-md bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
-
-            {/* ---- STEP 1: KAMERA ---- */}
             {modalStep === 'camera' && (
               <>
                 <div className="p-4 text-center border-b border-[#e8e0d8]">
                   <h3 className="font-bold text-[#3e2723]">{cameraMode === 'in' ? 'Selfie Check-In' : 'Selfie Check-Out'}</h3>
+                  {cameraMode === 'in' && isOffDay && (
+                    <p className="text-xs text-purple-600 font-semibold mt-0.5">Mode Lembur — {offDayLabel}</p>
+                  )}
                   <p className="text-xs text-[#3e2723]/50 mt-0.5">Pastikan wajah terlihat jelas</p>
                 </div>
                 <div className="relative bg-[#3e2723] aspect-[3/4] w-full overflow-hidden">
-                  {!photoData ? (
-                    <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
-                  ) : (
-                    <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
-                  )}
+                  {!photoData
+                    ? <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
+                    : <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />}
                 </div>
                 <div className="p-6 bg-white flex flex-col gap-3">
                   {!photoData ? (
@@ -352,17 +492,9 @@ export default function DashboardPage() {
                     </button>
                   ) : (
                     <>
-                      {/* Check-in: langsung kirim. Check-out: lanjut ke form */}
-                      <button
-                        onClick={handlePhotoCaptured}
-                        disabled={isCheckingIn}
-                        className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
-                      >
-                        {isCheckingIn
-                          ? "Mendeteksi Lokasi GPS..."
-                          : cameraMode === 'in'
-                            ? "Kirim Check-In"
-                            : "Lanjut — Isi Update Kerja →"}
+                      <button onClick={handlePhotoCaptured} disabled={isCheckingIn}
+                        className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2">
+                        {isCheckingIn ? "Mendeteksi Lokasi GPS..." : cameraMode === 'in' ? "Kirim Check-In" : "Lanjut — Isi Update Kerja →"}
                       </button>
                       <button onClick={retakePhoto} disabled={isCheckingIn} className="w-full py-3 bg-[#faf8f5] hover:bg-[#f0ebe4] text-[#3e2723] rounded-xl font-semibold border border-[#e8e0d8] text-sm">
                         Ulangi Foto
@@ -372,50 +504,33 @@ export default function DashboardPage() {
                 </div>
               </>
             )}
-
-            {/* ---- STEP 2: FORM UPDATE KERJA (check-out saja) ---- */}
             {modalStep === 'form' && (
               <>
                 <div className="p-4 text-center border-b border-[#e8e0d8]">
                   <h3 className="font-bold text-[#3e2723]">Update Kerja Hari Ini</h3>
                   <p className="text-xs text-[#3e2723]/50 mt-0.5">Ceritakan apa yang dikerjakan hari ini</p>
                 </div>
-
-                {/* Preview foto kecil */}
                 <div className="px-6 pt-5 flex items-center gap-3">
-                  {photoData && (
-                    <img src={photoData} alt="Selfie" className="w-12 h-12 rounded-xl object-cover transform -scale-x-100 border border-[#e8e0d8]" />
-                  )}
+                  {photoData && <img src={photoData} alt="Selfie" className="w-12 h-12 rounded-xl object-cover transform -scale-x-100 border border-[#e8e0d8]" />}
                   <div>
                     <p className="text-xs font-semibold text-[#3e2723]">Foto check-out tersimpan</p>
-                    <button onClick={() => setModalStep('camera')} className="text-xs text-[#c04838] hover:underline mt-0.5">
-                      Ganti foto
-                    </button>
+                    <button onClick={() => setModalStep('camera')} className="text-xs text-[#c04838] hover:underline mt-0.5">Ganti foto</button>
                   </div>
                 </div>
-
                 <div className="p-6 flex flex-col gap-4">
-                  <textarea
-                    value={workUpdate}
-                    onChange={e => setWorkUpdate(e.target.value)}
-                    placeholder="Contoh: Menyelesaikan motif batik parang untuk pesanan 50 pcs, koordinasi dengan tim packaging..."
+                  <textarea value={workUpdate} onChange={e => setWorkUpdate(e.target.value)}
+                    placeholder="Contoh: Menyelesaikan motif batik parang untuk pesanan 50 pcs..."
                     rows={5}
                     className="w-full px-4 py-3 border border-[#e8e0d8] focus:border-[#c04838] focus:ring-4 focus:ring-[#c04838]/10 rounded-2xl outline-none text-[#3e2723] text-sm placeholder:text-[#3e2723]/30 resize-none leading-relaxed transition-all"
-                    autoFocus
-                  />
-                  <p className="text-xs text-[#3e2723]/40 -mt-2">{workUpdate.length} karakter{workUpdate.length < 10 && workUpdate.length > 0 ? ' — minimal 10 karakter' : ''}</p>
-
-                  <button
-                    onClick={handleCheckOut}
-                    disabled={isCheckingIn || workUpdate.trim().length < 10}
-                    className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
-                  >
+                    autoFocus />
+                  <p className="text-xs text-[#3e2723]/40 -mt-2">{workUpdate.length} karakter</p>
+                  <button onClick={handleCheckOut} disabled={isCheckingIn || workUpdate.trim().length < 10}
+                    className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all">
                     {isCheckingIn ? "Mendeteksi Lokasi GPS..." : "Kirim Check-Out"}
                   </button>
                 </div>
               </>
             )}
-
           </div>
         </div>
       )}

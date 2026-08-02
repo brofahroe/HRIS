@@ -36,7 +36,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await request.json();
-    const { userId, lat, lng, photoBase64, time } = body;
+    const { userId, lat, lng, photoBase64, time, overtimeRequestId } = body;
 
     if (!userId || !lat || !lng) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
@@ -108,7 +108,9 @@ export async function POST(request: Request) {
         check_in_lat: lat,
         check_in_lng: lng,
         check_in_photo: photoUrl,
-        status: status
+        status: status,
+        // Tandai sebagai lembur jika ada overtimeRequestId (approval akan set is_overtime=true)
+        ...(overtimeRequestId ? { overtime_request_id: overtimeRequestId } : {}),
       }, {
         onConflict: 'user_id,date'
       })

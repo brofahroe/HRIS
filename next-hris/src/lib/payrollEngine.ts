@@ -38,12 +38,17 @@ export async function generateMonthlyPayroll(month: number, year: number) {
 
       let presentDays = 0;
       let lateDays = 0;
+      let overtimeHours = 0;
       
       attendances.forEach(att => {
         if (att.status === 'Hadir') presentDays++;
         if (att.status === 'Terlambat') {
           presentDays++;
           lateDays++;
+        }
+        // Tambahkan jam lembur yang sudah diapprove
+        if (att.is_overtime && att.overtime_hours) {
+          overtimeHours += Number(att.overtime_hours);
         }
       });
 
@@ -52,11 +57,17 @@ export async function generateMonthlyPayroll(month: number, year: number) {
       const allowance = Number(user.allowance) || 0;
       const childAllowance = Number(user.child_allowance) || 0;
       
-      // Potongan Terlambat (Contoh: Potong 50.000 per hari terlambat)
+      // Potongan Terlambat (Potong 50.000 per hari terlambat)
       const latePenalty = lateDays * 50000;
+
+      // Upah lembur: jam lembur × tarif per jam
+      // Tarif per jam = (gaji harian / 8) — atau (gaji bulanan / 26 / 8) jika pakai monthly
+      const dailyRate = Number(user.daily_salary) || (Number(user.monthly_salary) / 26);
+      const hourlyRate = dailyRate / 8;
+      const overtimePay = Math.round(overtimeHours * hourlyRate);
       
-      const totalIncome = baseSalary + allowance + childAllowance;
-      const totalDeductions = latePenalty; // Bisa ditambah potongan BPJS/Kasbon di sini
+      const totalIncome = baseSalary + allowance + childAllowance + overtimePay;
+      const totalDeductions = latePenalty;
       const netSalary = totalIncome - totalDeductions;
 
       payrollResults.push({
@@ -67,6 +78,8 @@ export async function generateMonthlyPayroll(month: number, year: number) {
         year: year,
         present_days: presentDays,
         late_days: lateDays,
+        overtime_hours: overtimeHours,
+        overtime_pay: overtimePay,
         base_salary: baseSalary,
         total_allowance: allowance + childAllowance,
         late_deductions: totalDeductions,

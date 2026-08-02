@@ -4,12 +4,13 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays } from "lucide-react";
+import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Data Karyawan", icon: Users },
   { href: "/admin/attendance", label: "Laporan Absensi", icon: CalendarDays },
+  { href: "/admin/overtime", label: "Permohonan Lembur", icon: Timer },
   { href: "/admin/payroll", label: "Payroll", icon: FileText },
   { href: "/admin/settings", label: "Pengaturan", icon: Settings },
 ];
@@ -18,6 +19,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
+  const [pendingOvertime, setPendingOvertime] = useState(0);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -27,6 +29,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .from('users').select('role').eq('auth_id', session.user.id).single();
       if (userData?.role === 'Admin') {
         setAuthorized(true);
+        // Ambil jumlah permohonan lembur pending
+        const { count } = await supabase
+          .from('overtime_requests')
+          .select('*', { count: 'exact', head: true })
+          .eq('status', 'pending');
+        setPendingOvertime(count || 0);
       } else {
         router.push('/dashboard');
       }
@@ -74,7 +82,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 }`}
               >
                 <Icon size={18} />
-                {label}
+                <span className="flex-1">{label}</span>
+                {href === "/admin/overtime" && pendingOvertime > 0 && (
+                  <span className="ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 leading-none">
+                    {pendingOvertime}
+                  </span>
+                )}
               </Link>
             );
           })}

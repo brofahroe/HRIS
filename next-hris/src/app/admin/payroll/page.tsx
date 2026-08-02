@@ -82,6 +82,7 @@ export default function PayrollPage() {
                   <th className="px-6 py-3 text-center">Kehadiran</th>
                   <th className="px-6 py-3 text-right">Gaji Pokok</th>
                   <th className="px-6 py-3 text-right">Tunjangan</th>
+                  <th className="px-6 py-3 text-right text-purple-600">Lembur</th>
                   <th className="px-6 py-3 text-right text-[#c04838]">Potongan</th>
                   <th className="px-6 py-3 text-right text-[#3e2723]">Total Diterima</th>
                 </tr>
@@ -96,9 +97,11 @@ export default function PayrollPage() {
                     <td className="px-6 py-4 text-center">
                       <div className="text-sm font-semibold text-green-600">{p.present_days} Hadir</div>
                       {p.late_days > 0 && <div className="text-xs text-amber-500">{p.late_days} Terlambat</div>}
+                      {p.overtime_hours > 0 && <div className="text-xs text-purple-600">{p.overtime_hours}j Lembur</div>}
                     </td>
                     <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.base_salary)}</td>
                     <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.total_allowance)}</td>
+                    <td className="px-6 py-4 text-right text-purple-600 text-sm">{p.overtime_pay > 0 ? `+${formatRupiah(p.overtime_pay)}` : '–'}</td>
                     <td className="px-6 py-4 text-right text-[#c04838] text-sm">-{formatRupiah(p.late_deductions)}</td>
                     <td className="px-6 py-4 text-right font-bold text-[#3e2723]">{formatRupiah(p.net_salary)}</td>
                   </tr>

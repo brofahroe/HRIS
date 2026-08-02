@@ -212,7 +212,7 @@ export default function DashboardPage() {
         <div className="bg-white rounded-[1.5rem] p-6 shadow-[0_4px_20px_rgba(192,72,56,0.06)] border border-red-50 flex flex-col items-center py-10">
           <div className="text-center mb-8">
             <p className="text-xs font-bold tracking-widest text-[#c04838] uppercase mb-2">Jadwal Hari Ini</p>
-            <div className="font-serif text-5xl font-bold text-[#3e2723] tracking-tight mb-2">08:00 – 17:00</div>
+            <div className="font-serif text-5xl font-bold text-[#3e2723] tracking-tight mb-2">08:00 – 16:00</div>
             <p className="text-sm text-[#3e2723]/50 flex items-center justify-center gap-1">
               <MapPin size={14} /> Galeri / Sanggar Batik
             </p>

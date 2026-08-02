@@ -14,7 +14,6 @@ export default function PayrollPage() {
     setLoading(true);
     const res = await processPayrollAction(selectedYear, selectedMonth);
     setLoading(false);
-    
     if (res.success) {
       setPayrollData(res.data);
       alert(`Berhasil menghitung gaji untuk ${res.data.length} karyawan!`);
@@ -23,91 +22,85 @@ export default function PayrollPage() {
     }
   };
 
-  const formatRupiah = (angka: number) => {
-    return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-  };
+  const formatRupiah = (angka: number) =>
+    new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+
+  const selectCls = "px-3 py-2.5 border border-[#e8e0d8] rounded-xl outline-none focus:border-[#c04838] focus:ring-2 focus:ring-[#c04838]/10 text-[#3e2723] text-sm bg-white transition-all";
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Manajemen Payroll</h2>
-          <p className="text-slate-500">Kalkulasi dan kelola penggajian karyawan bulanan.</p>
+          <p className="text-xs font-bold tracking-widest text-[#c04838] uppercase mb-1">Penggajian</p>
+          <h2 className="font-serif text-3xl font-bold text-[#3e2723]">Manajemen Payroll</h2>
+          <p className="text-[#3e2723]/50 mt-1 text-sm">Kalkulasi dan kelola penggajian karyawan bulanan.</p>
         </div>
         <div className="flex flex-wrap gap-3 items-center">
-          <select 
-            value={selectedMonth}
-            onChange={(e) => setSelectedMonth(Number(e.target.value))}
-            className="px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-blue-500"
-          >
-            {Array.from({length: 12}, (_, i) => i + 1).map(m => (
+          <select value={selectedMonth} onChange={e => setSelectedMonth(Number(e.target.value))} className={selectCls}>
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
               <option key={m} value={m}>Bulan {m}</option>
             ))}
           </select>
-          <select 
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="px-3 py-2 border border-slate-200 rounded-lg outline-none focus:border-blue-500"
-          >
+          <select value={selectedYear} onChange={e => setSelectedYear(Number(e.target.value))} className={selectCls}>
             <option value={2026}>2026</option>
             <option value={2025}>2025</option>
           </select>
-          
-          <button 
+          <button
             onClick={handleGenerate}
             disabled={loading}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
+            className="bg-[#c04838] hover:bg-[#98382d] disabled:opacity-70 text-white px-5 py-2.5 rounded-xl font-semibold text-sm shadow-[0_4px_12px_rgba(192,72,56,0.25)] transition-colors flex items-center gap-2"
           >
-            {loading ? "Memproses..." : <><Calculator size={18} /> Kalkulasi Gaji</>}
+            {loading ? "Memproses..." : <><Calculator size={16} /> Kalkulasi Gaji</>}
           </button>
         </div>
       </div>
 
       {payrollData.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-12 flex flex-col items-center justify-center text-center mt-6">
-          <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
-            <FileText size={32} />
+        <div className="bg-white rounded-2xl border border-[#e8e0d8] shadow-[0_2px_12px_rgba(192,72,56,0.04)] p-14 flex flex-col items-center justify-center text-center">
+          <div className="w-16 h-16 bg-red-50 text-[#c04838] rounded-2xl flex items-center justify-center mb-4">
+            <FileText size={30} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Belum Ada Data Gaji</h3>
-          <p className="text-slate-500 max-w-md">
+          <h3 className="font-serif text-xl font-bold text-[#3e2723] mb-2">Belum Ada Data Gaji</h3>
+          <p className="text-[#3e2723]/50 max-w-sm text-sm leading-relaxed">
             Pilih bulan dan tahun di atas, lalu klik "Kalkulasi Gaji" untuk menghitung kehadiran dan total gaji secara otomatis.
           </p>
         </div>
       ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden mt-6">
-          <div className="flex justify-between items-center p-4 border-b border-slate-100 bg-slate-50">
-            <h3 className="font-bold text-slate-700">Laporan Penggajian (Bulan {selectedMonth}/{selectedYear})</h3>
-            <button className="bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-2">
-              <Download size={16} /> Export CSV
+        <div className="bg-white rounded-2xl border border-[#e8e0d8] shadow-[0_2px_12px_rgba(192,72,56,0.04)] overflow-hidden">
+          <div className="flex justify-between items-center px-6 py-4 border-b border-[#e8e0d8] bg-[#faf8f5]">
+            <h3 className="font-semibold text-[#3e2723] text-sm">Laporan Penggajian (Bulan {selectedMonth}/{selectedYear})</h3>
+            <button className="bg-white border border-[#e8e0d8] hover:bg-[#faf8f5] text-[#3e2723]/70 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2">
+              <Download size={14} /> Export CSV
             </button>
           </div>
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+            <table className="w-full text-left">
               <thead>
-                <tr className="bg-white text-slate-500 text-sm border-b border-slate-100">
-                  <th className="px-6 py-3 font-medium">Karyawan</th>
-                  <th className="px-6 py-3 font-medium text-center">Kehadiran</th>
-                  <th className="px-6 py-3 font-medium text-right">Gaji Pokok</th>
-                  <th className="px-6 py-3 font-medium text-right">Tunjangan</th>
-                  <th className="px-6 py-3 font-medium text-right text-red-500">Potongan</th>
-                  <th className="px-6 py-3 font-medium text-right text-blue-600">Total Diterima</th>
+                <tr className="bg-white text-[#3e2723]/50 text-xs font-semibold uppercase tracking-wider border-b border-[#f0ebe4]">
+                  <th className="px-6 py-3">Karyawan</th>
+                  <th className="px-6 py-3 text-center">Kehadiran</th>
+                  <th className="px-6 py-3 text-right">Gaji Pokok</th>
+                  <th className="px-6 py-3 text-right">Tunjangan</th>
+                  <th className="px-6 py-3 text-right text-[#c04838]">Potongan</th>
+                  <th className="px-6 py-3 text-right text-[#3e2723]">Total Diterima</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody className="divide-y divide-[#f0ebe4]">
                 {payrollData.map((p, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 transition-colors">
+                  <tr key={idx} className="hover:bg-[#faf8f5] transition-colors">
                     <td className="px-6 py-4">
-                      <div className="font-medium text-slate-800">{p.employee_name}</div>
-                      <div className="text-xs text-slate-500">NIK: {p.nik}</div>
+                      <div className="font-medium text-[#3e2723] text-sm">{p.employee_name}</div>
+                      <div className="text-xs text-[#3e2723]/40 mt-0.5">NIK: {p.nik}</div>
                     </td>
                     <td className="px-6 py-4 text-center">
                       <div className="text-sm font-semibold text-green-600">{p.present_days} Hadir</div>
-                      <div className="text-xs text-amber-500">{p.late_days > 0 ? `${p.late_days} Terlambat` : ''}</div>
+                      {p.late_days > 0 && <div className="text-xs text-amber-500">{p.late_days} Terlambat</div>}
                     </td>
-                    <td className="px-6 py-4 text-right text-slate-700">{formatRupiah(p.base_salary)}</td>
-                    <td className="px-6 py-4 text-right text-slate-700">{formatRupiah(p.total_allowance)}</td>
-                    <td className="px-6 py-4 text-right text-red-500">-{formatRupiah(p.late_deductions)}</td>
-                    <td className="px-6 py-4 text-right font-bold text-blue-700">{formatRupiah(p.net_salary)}</td>
+                    <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.base_salary)}</td>
+                    <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.total_allowance)}</td>
+                    <td className="px-6 py-4 text-right text-[#c04838] text-sm">-{formatRupiah(p.late_deductions)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-[#3e2723]">{formatRupiah(p.net_salary)}</td>
                   </tr>
                 ))}
               </tbody>

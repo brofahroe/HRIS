@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await request.json();
-    const { userId, lat, lng, photoUrl, time } = body;
+    const { userId, lat, lng, photoBase64, time } = body;
 
     if (!userId || !lat || !lng) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
@@ -56,16 +56,43 @@ export async function POST(request: Request) {
     }
 
     // 2. Tentukan Status Keterlambatan
-    // Contoh sederhana: Jam masuk maksimal 08:00
     const checkInTime = new Date(time || Date.now());
     const maxCheckInTime = new Date(checkInTime);
-    maxCheckInTime.setHours(8, 0, 0, 0); // 08:00 AM hari ini
-    
+    maxCheckInTime.setHours(8, 0, 0, 0);
     const status = checkInTime > maxCheckInTime ? 'Terlambat' : 'Hadir';
-
-    // 3. Simpan ke database
     const todayStr = checkInTime.toISOString().split('T')[0];
 
+    // 3. Upload Foto Selfie ke Supabase Storage
+    let photoUrl = null;
+    if (photoBase64) {
+      try {
+        // Pastikan bucket attendance ada (Abaikan error jika sudah ada)
+        await supabaseAdmin.storage.createBucket('attendance', { public: true });
+        
+        // Convert base64 ke buffer
+        const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const fileName = `${userId}_${todayStr}_${Date.now()}.jpg`;
+
+        const { data: uploadData, error: uploadError } = await supabaseAdmin
+          .storage
+          .from('attendance')
+          .upload(fileName, buffer, {
+            contentType: 'image/jpeg',
+            upsert: true
+          });
+
+        if (uploadError) throw uploadError;
+
+        const { data: publicUrlData } = supabaseAdmin.storage.from('attendance').getPublicUrl(fileName);
+        photoUrl = publicUrlData.publicUrl;
+      } catch (storageErr) {
+        console.error("Gagal upload foto:", storageErr);
+        // Tetap lanjut meskipun gagal upload foto
+      }
+    }
+
+    // 4. Simpan ke database
     const { data, error } = await supabaseAdmin
       .from('attendance')
       .upsert({
@@ -74,7 +101,7 @@ export async function POST(request: Request) {
         check_in_time: checkInTime.toISOString(),
         check_in_lat: lat,
         check_in_lng: lng,
-        check_in_photo: photoUrl || null,
+        check_in_photo: photoUrl,
         status: status
       }, {
         onConflict: 'user_id,date'

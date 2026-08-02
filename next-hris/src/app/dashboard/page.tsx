@@ -1,18 +1,25 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { User, LogOut, MapPin, Clock, Camera, CheckCircle } from "lucide-react";
+import { User, LogOut, MapPin, Clock, Camera, CheckCircle, X } from "lucide-react";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
   const [history, setHistory] = useState<any[]>([]);
+
+  // Camera State
+  const [showCamera, setShowCamera] = useState(false);
+  const [photoData, setPhotoData] = useState<string | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -23,7 +30,6 @@ export default function DashboardPage() {
       }
       setSessionUser(session.user);
 
-      // Ambil profil public.users
       const { data: userData } = await supabase
         .from('users')
         .select('*')
@@ -33,7 +39,6 @@ export default function DashboardPage() {
       if (userData) {
         setProfile(userData);
         
-        // Ambil riwayat absen
         const { data: attData } = await supabase
           .from('attendance')
           .select('*')
@@ -42,7 +47,6 @@ export default function DashboardPage() {
           
         if (attData) {
           setHistory(attData);
-          // Cek absen hari ini
           const todayStr = new Date().toISOString().split('T')[0];
           const today = attData.find(a => a.date === todayStr);
           if (today) setTodayAttendance(today);
@@ -58,8 +62,56 @@ export default function DashboardPage() {
     router.push("/");
   };
 
+  // 1. Buka Kamera
+  const openCamera = async () => {
+    setShowCamera(true);
+    setPhotoData(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      alert("Gagal mengakses kamera. Pastikan Anda telah memberikan izin kamera.");
+      setShowCamera(false);
+    }
+  };
+
+  const closeCamera = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+    }
+    setShowCamera(false);
+  };
+
+  // 2. Ambil Foto
+  const capturePhoto = () => {
+    if (videoRef.current) {
+      const canvas = document.createElement("canvas");
+      canvas.width = videoRef.current.videoWidth;
+      canvas.height = videoRef.current.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        setPhotoData(dataUrl);
+        // Matikan stream setelah foto diambil
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop());
+        }
+      }
+    }
+  };
+
+  const retakePhoto = () => {
+    setPhotoData(null);
+    openCamera(); // Buka stream lagi
+  };
+
+  // 3. Eksekusi Check-In dengan Foto & GPS
   const handleCheckIn = () => {
-    if (!profile) return;
+    if (!profile || !photoData) return;
     setIsCheckingIn(true);
 
     if (!navigator.geolocation) {
@@ -76,9 +128,10 @@ export default function DashboardPage() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              userId: profile.id, // ID dari public.users
+              userId: profile.id,
               lat: latitude,
               lng: longitude,
+              photoBase64: photoData, // Kirim foto Base64
               time: new Date().toISOString()
             })
           });
@@ -86,6 +139,7 @@ export default function DashboardPage() {
           const result = await res.json();
           if (res.ok) {
             alert(result.message);
+            closeCamera();
             // Refresh riwayat
             const { data } = await supabase
               .from('attendance')
@@ -154,12 +208,12 @@ export default function DashboardPage() {
               </button>
             ) : (
               <button 
-                onClick={handleCheckIn}
+                onClick={openCamera}
                 disabled={isCheckingIn}
                 className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-70 disabled:scale-100 transition-all text-white rounded-2xl font-semibold shadow-lg shadow-blue-500/30 flex flex-col items-center gap-1"
               >
                 <Camera size={24} />
-                {isCheckingIn ? "Mendeteksi Lokasi..." : "Check In Sekarang"}
+                Check In (Selfie)
               </button>
             )}
           </div>
@@ -175,12 +229,17 @@ export default function DashboardPage() {
             ) : (
               history.slice(0, 7).map((att) => (
                 <div key={att.id} className="p-4 px-6 flex justify-between items-center hover:bg-slate-50">
-                  <div>
-                    <p className="font-medium text-slate-800">{new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-                    <p className="text-sm text-slate-500 flex items-center gap-1">
-                      <Clock size={14} /> 
-                      {new Date(att.check_in_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
-                    </p>
+                  <div className="flex items-center gap-4">
+                    {att.check_in_photo && (
+                      <img src={att.check_in_photo} alt="Selfie" className="w-12 h-12 rounded-lg object-cover bg-slate-200" />
+                    )}
+                    <div>
+                      <p className="font-medium text-slate-800">{new Date(att.date).toLocaleDateString('id-ID', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
+                      <p className="text-sm text-slate-500 flex items-center gap-1">
+                        <Clock size={14} /> 
+                        {new Date(att.check_in_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}
+                      </p>
+                    </div>
                   </div>
                   <div>
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
@@ -195,6 +254,71 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* MODAL KAMERA SELFIE */}
+      {showCamera && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex flex-col items-center justify-center p-4">
+          <button 
+            onClick={closeCamera}
+            className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors"
+          >
+            <X size={24} />
+          </button>
+          
+          <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col">
+            <div className="p-4 text-center border-b border-slate-100">
+              <h3 className="font-bold text-slate-800">Selfie Absensi</h3>
+              <p className="text-xs text-slate-500">Pastikan wajah terlihat jelas</p>
+            </div>
+            
+            <div className="relative bg-slate-900 aspect-[3/4] w-full flex items-center justify-center overflow-hidden">
+              {!photoData ? (
+                <video 
+                  ref={videoRef} 
+                  autoPlay 
+                  playsInline 
+                  muted 
+                  className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" 
+                />
+              ) : (
+                <img 
+                  src={photoData} 
+                  alt="Captured Selfie" 
+                  className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" 
+                />
+              )}
+            </div>
+            
+            <div className="p-6 bg-white flex flex-col gap-3">
+              {!photoData ? (
+                <button 
+                  onClick={capturePhoto}
+                  className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+                >
+                  <Camera size={20} /> Ambil Foto
+                </button>
+              ) : (
+                <>
+                  <button 
+                    onClick={handleCheckIn}
+                    disabled={isCheckingIn}
+                    className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+                  >
+                    {isCheckingIn ? "Mendeteksi Lokasi GPS..." : "Kirim Absensi"}
+                  </button>
+                  <button 
+                    onClick={retakePhoto}
+                    disabled={isCheckingIn}
+                    className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-semibold"
+                  >
+                    Ulangi Foto
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

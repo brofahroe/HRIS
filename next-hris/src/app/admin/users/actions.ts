@@ -77,7 +77,7 @@ export async function updateUser(userId: string, data: any) {
       .eq('id', userId);
 
     if (error) throw error;
-    
+
     revalidatePath('/admin/users');
     return { success: true };
   } catch (error: any) {
@@ -100,16 +100,18 @@ export async function resetPassword(authId: string, newPassword: string) {
     return { success: false, error: error.message };
   }
 }
+
+export async function deleteUser(userId: string, authId: string) {
   try {
     // 1. Hapus dari public.users
     const { error: dbError } = await supabase
       .from('users')
       .delete()
       .eq('id', userId);
-      
+
     if (dbError) throw dbError;
 
-    // 2. Hapus dari auth.users (Sistem Login) jika auth_id ada
+    // 2. Hapus dari auth.users jika auth_id ada
     if (authId) {
       const { error: authError } = await supabase.auth.admin.deleteUser(authId);
       if (authError) throw authError;

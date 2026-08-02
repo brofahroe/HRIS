@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { User, LogOut, MapPin, Clock, Camera, CheckCircle, X } from "lucide-react";
 

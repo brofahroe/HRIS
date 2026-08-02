@@ -205,7 +205,7 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex gap-4 w-full max-w-sm">
+          <div className="flex gap-4 w-full max-w-sm mt-4">
             {todayAttendance ? (
               <button disabled className="flex-1 py-4 bg-green-50 text-green-700 border border-green-200 rounded-2xl font-semibold flex flex-col items-center gap-1">
                 <CheckCircle size={24} className="text-green-500" />
@@ -220,6 +220,22 @@ export default function DashboardPage() {
                 <Camera size={24} />
                 Check In (Selfie)
               </button>
+            )}
+          </div>
+          
+          {/* Tombol Pendaftaran Wajah */}
+          <div className="mt-6 w-full max-w-sm">
+            {!profile?.face_descriptor ? (
+              <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
+                <p className="text-sm text-amber-800 mb-3 text-center">Anda belum mendaftarkan wajah (Face ID). Wajib didaftarkan untuk absen besok.</p>
+                <Link href="/dashboard/face-registration" className="block w-full py-3 bg-amber-600 hover:bg-amber-700 text-white text-center rounded-xl font-bold transition-all shadow-md">
+                  Daftarkan Wajah Sekarang
+                </Link>
+              </div>
+            ) : (
+              <Link href="/dashboard/face-registration" className="block w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 text-center rounded-xl font-semibold transition-all">
+                Perbarui Data Wajah (Face ID)
+              </Link>
             )}
           </div>
         </div>

@@ -18,6 +18,7 @@ export default function DashboardPage() {
 
   // Camera State
   const [showCamera, setShowCamera] = useState(false);
+  const [cameraMode, setCameraMode] = useState<'in' | 'out'>('in');
   const [photoData, setPhotoData] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -63,8 +64,9 @@ export default function DashboardPage() {
     router.push("/");
   };
 
-  // 1. Buka Kamera
-  const openCamera = async () => {
+  // 1. Buka Kamera (mode: 'in' = check-in, 'out' = check-out)
+  const openCamera = async (mode: 'in' | 'out' = 'in') => {
+    setCameraMode(mode);
     setShowCamera(true);
     setPhotoData(null);
     try {
@@ -112,11 +114,11 @@ export default function DashboardPage() {
 
   const retakePhoto = () => {
     setPhotoData(null);
-    openCamera(); // Buka stream lagi
+    openCamera(cameraMode); // Buka stream lagi
   };
 
-  // 3. Eksekusi Check-In dengan Foto & GPS
-  const handleCheckIn = () => {
+  // Helper: ambil GPS lalu submit ke endpoint absensi (masuk atau pulang)
+  const submitAttendance = () => {
     if (!profile || !photoData) return;
     setIsCheckingIn(true);
 
@@ -129,8 +131,9 @@ export default function DashboardPage() {
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         const { latitude, longitude } = position.coords;
+        const endpoint = cameraMode === 'out' ? '/api/attendance/check-out' : '/api/attendance/check-in';
         try {
-          const res = await fetch('/api/attendance/check-in', {
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -175,6 +178,20 @@ export default function DashboardPage() {
     );
   };
 
+  // 3. Eksekusi Check-In
+  const handleCheckIn = () => {
+    if (!profile || !photoData) return;
+    setCameraMode('in');
+    submitAttendance();
+  };
+
+  // 4. Eksekusi Check-Out
+  const handleCheckOut = () => {
+    if (!profile || !photoData) return;
+    setCameraMode('out');
+    submitAttendance();
+  };
+
   if (loading) {
     return <div className="min-h-screen flex items-center justify-center bg-slate-50 text-slate-500">Memuat data Anda...</div>;
   }
@@ -216,15 +233,32 @@ export default function DashboardPage() {
             </p>
           </div>
 
-          <div className="flex gap-4 w-full max-w-sm mt-4">
+          <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm mt-4">
             {todayAttendance ? (
-              <button disabled className="flex-1 py-4 bg-green-50 text-green-700 border border-green-200 rounded-2xl font-semibold flex flex-col items-center gap-1">
-                <CheckCircle size={24} className="text-green-500" />
-                Sudah Absen ({new Date(todayAttendance.check_in_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})})
-              </button>
+              <>
+                <button disabled className="flex-1 py-4 bg-green-50 text-green-700 border border-green-200 rounded-2xl font-semibold flex flex-col items-center gap-1">
+                  <CheckCircle size={24} className="text-green-500" />
+                  Sudah Absen ({new Date(todayAttendance.check_in_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})})
+                </button>
+                {!todayAttendance.check_out_time ? (
+                  <button
+                    onClick={() => openCamera('out')}
+                    disabled={isCheckingIn}
+                    className="flex-1 py-4 bg-slate-800 hover:bg-slate-900 active:scale-95 disabled:opacity-70 text-white rounded-2xl font-semibold shadow-lg shadow-slate-500/30 flex flex-col items-center gap-1 transition-all"
+                  >
+                    <Camera size={24} />
+                    Check Out (Selfie)
+                  </button>
+                ) : (
+                  <button disabled className="flex-1 py-4 bg-slate-100 text-slate-700 border border-slate-200 rounded-2xl font-semibold flex flex-col items-center gap-1">
+                    <CheckCircle size={24} className="text-slate-500" />
+                    Sudah Check Out ({new Date(todayAttendance.check_out_time).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})})
+                  </button>
+                )}
+              </>
             ) : (
               <button 
-                onClick={openCamera}
+                onClick={() => openCamera('in')}
                 disabled={isCheckingIn}
                 className="flex-1 py-4 bg-blue-600 hover:bg-blue-700 active:scale-95 disabled:opacity-70 disabled:scale-100 transition-all text-white rounded-2xl font-semibold shadow-lg shadow-blue-500/30 flex flex-col items-center gap-1"
               >
@@ -299,7 +333,9 @@ export default function DashboardPage() {
           
           <div className="w-full max-w-md bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col">
             <div className="p-4 text-center border-b border-slate-100">
-              <h3 className="font-bold text-slate-800">Selfie Absensi</h3>
+              <h3 className="font-bold text-slate-800">
+                {cameraMode === 'in' ? 'Selfie Check-In' : 'Selfie Check-Out'}
+              </h3>
               <p className="text-xs text-slate-500">Pastikan wajah terlihat jelas</p>
             </div>
             
@@ -331,13 +367,13 @@ export default function DashboardPage() {
                 </button>
               ) : (
                 <>
-                  <button 
-                    onClick={handleCheckIn}
-                    disabled={isCheckingIn}
-                    className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
-                  >
-                    {isCheckingIn ? "Mendeteksi Lokasi GPS..." : "Kirim Absensi"}
-                  </button>
+              <button 
+                onClick={cameraMode === 'in' ? handleCheckIn : handleCheckOut}
+                disabled={isCheckingIn}
+                className="w-full py-4 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2"
+              >
+                {isCheckingIn ? "Mendeteksi Lokasi GPS..." : cameraMode === 'in' ? "Kirim Check-In" : "Kirim Check-Out"}
+              </button>
                   <button 
                     onClick={retakePhoto}
                     disabled={isCheckingIn}

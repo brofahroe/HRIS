@@ -61,25 +61,31 @@ export async function generateMonthlyPayroll(month: number, year: number) {
 
       payrollResults.push({
         user_id: user.id,
+        employee_name: user.full_name || '-',
+        nik: user.nik || '-',
         month: month,
         year: year,
         present_days: presentDays,
         late_days: lateDays,
         base_salary: baseSalary,
-        allowances: allowance + childAllowance,
-        deductions: totalDeductions,
+        total_allowance: allowance + childAllowance,
+        late_deductions: totalDeductions,
         net_salary: netSalary,
         status: 'Pending'
       });
     }
 
-    // 3. Simpan hasil payroll ke database (Tabel 'payroll' perlu dibuat di Supabase)
-    // const { error: insertError } = await supabaseAdmin.from('payroll').insert(payrollResults);
-    // if (insertError) throw insertError;
+    // 3. Simpan hasil payroll ke database (tabel 'payroll')
+    const { error: insertError } = await supabaseAdmin
+      .from('payroll')
+      .upsert(payrollResults as any[], {
+        onConflict: 'user_id,month,year'
+      });
+    if (insertError) throw insertError;
 
     return {
       success: true,
-      message: `Berhasil kalkulasi gaji untuk ${payrollResults.length} karyawan`,
+      message: `Berhasil kalkulasi & menyimpan gaji untuk ${payrollResults.length} karyawan`,
       data: payrollResults
     };
 

@@ -2,16 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { updateUser, deleteUser } from "./actions";
-import { Edit2, Trash2, X } from "lucide-react";
+import { updateUser, deleteUser, createUser } from "./actions";
+import { Edit2, Trash2, X, Plus } from "lucide-react";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // State untuk Modal Edit
+  // State untuk Modal (Edit atau Tambah)
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [createMode, setCreateMode] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   async function fetchUsers() {
@@ -29,8 +30,25 @@ export default function UsersPage() {
     fetchUsers();
   }, []);
 
+  const handleAddClick = () => {
+    setEditingUser({
+      full_name: '',
+      email: '',
+      nik: '',
+      position: '',
+      division: '',
+      role: 'Employee',
+      is_active: true,
+      daily_salary: '',
+      monthly_salary: ''
+    });
+    setCreateMode(true);
+    setIsModalOpen(true);
+  };
+
   const handleEditClick = (user: any) => {
     setEditingUser({ ...user });
+    setCreateMode(false);
     setIsModalOpen(true);
   };
 
@@ -46,10 +64,27 @@ export default function UsersPage() {
     }
   };
 
-  const handleSaveEdit = async (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
-    const res = await updateUser(editingUser.id, editingUser);
+
+    let res: any;
+    if (createMode) {
+      const form = e.currentTarget as HTMLFormElement;
+      const fd = new FormData(form);
+      fd.set('full_name', editingUser.full_name);
+      fd.set('email', editingUser.email);
+      fd.set('nik', editingUser.nik);
+      fd.set('position', editingUser.position);
+      fd.set('division', editingUser.division);
+      fd.set('role', editingUser.role);
+      fd.set('daily_salary', editingUser.daily_salary);
+      fd.set('monthly_salary', editingUser.monthly_salary);
+      res = await createUser(fd);
+      if (res.success) alert(res.message);
+    } else {
+      res = await updateUser(editingUser.id, editingUser);
+    }
     setIsSaving(false);
     
     if (res.success) {
@@ -67,8 +102,11 @@ export default function UsersPage() {
           <h2 className="text-2xl font-bold text-slate-800">Data Karyawan</h2>
           <p className="text-slate-500">Kelola informasi seluruh karyawan Anda.</p>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors">
-          + Tambah Karyawan
+        <button
+          onClick={handleAddClick}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium shadow-sm transition-colors flex items-center gap-2"
+        >
+          <Plus size={16} /> + Tambah Karyawan
         </button>
       </div>
 
@@ -148,18 +186,32 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* MODAL EDIT */}
+      {/* MODAL Tambah / Edit */}
       {isModalOpen && editingUser && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl">
             <div className="flex justify-between items-center p-6 border-b border-slate-100">
-              <h3 className="text-xl font-bold text-slate-800">Edit Karyawan</h3>
+              <h3 className="text-xl font-bold text-slate-800">
+                {createMode ? 'Tambah Karyawan' : 'Edit Karyawan'}
+              </h3>
               <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600">
                 <X size={24} />
               </button>
             </div>
-            <form onSubmit={handleSaveEdit} className="p-6 space-y-4">
+            <form onSubmit={handleSave} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
+                {createMode && (
+                  <div className="space-y-1">
+                    <label className="text-sm font-semibold text-slate-700">Email</label>
+                    <input
+                      type="email"
+                      required
+                      value={editingUser.email || ''}
+                      onChange={e => setEditingUser({...editingUser, email: e.target.value})}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-100 outline-none"
+                    />
+                  </div>
+                )}
                 <div className="space-y-1">
                   <label className="text-sm font-semibold text-slate-700">Nama Lengkap</label>
                   <input 
@@ -235,7 +287,7 @@ export default function UsersPage() {
                   disabled={isSaving}
                   className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:opacity-70 text-white font-medium rounded-lg shadow-sm"
                 >
-                  {isSaving ? "Menyimpan..." : "Simpan Perubahan"}
+                  {isSaving ? "Menyimpan..." : (createMode ? 'Simpan' : "Simpan Perubahan")}
                 </button>
               </div>
             </form>

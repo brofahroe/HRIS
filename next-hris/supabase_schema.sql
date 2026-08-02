@@ -56,9 +56,29 @@ CREATE TABLE attendance (
   UNIQUE(user_id, date)
 );
 
--- 5. Row Level Security (RLS) Policies
+-- 5. Table: payroll (hasil kalkulasi gaji bulanan)
+CREATE TABLE payroll (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  month INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  employee_name VARCHAR(150),
+  nik VARCHAR(50),
+  present_days INTEGER DEFAULT 0,
+  late_days INTEGER DEFAULT 0,
+  base_salary NUMERIC(15, 2) DEFAULT 0,
+  total_allowance NUMERIC(15, 2) DEFAULT 0,
+  late_deductions NUMERIC(15, 2) DEFAULT 0,
+  net_salary NUMERIC(15, 2) DEFAULT 0,
+  status VARCHAR(20) DEFAULT 'Pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  UNIQUE(user_id, month, year)
+);
+
+-- 6. Row Level Security (RLS) Policies
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
+ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
 
 -- Karyawan hanya bisa melihat data absen sendiri
 CREATE POLICY "Employees can view own attendance"
@@ -68,6 +88,16 @@ USING (auth.uid() = (SELECT auth_id FROM users WHERE id = attendance.user_id));
 -- Admin bisa melihat semua data absen
 CREATE POLICY "Admins can view all attendance"
 ON attendance FOR SELECT
+USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
+
+-- Karyawan hanya bisa lihat payroll sendiri
+CREATE POLICY "Employees can view own payroll"
+ON payroll FOR SELECT
+USING (auth.uid() = (SELECT auth_id FROM users WHERE id = payroll.user_id));
+
+-- Admin bisa melihat seluruh payroll
+CREATE POLICY "Admins can view all payroll"
+ON payroll FOR SELECT
 USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
 
 -- (Tambahkan policy insert/update sesuai kebutuhan aplikasi)

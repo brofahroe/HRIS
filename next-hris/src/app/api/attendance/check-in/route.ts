@@ -23,8 +23,9 @@ const MAX_RADIUS_KM = 0.1; // Radius maksimal absensi (100 meter)
 
 export async function POST(request: Request) {
   try {
+    // Inisialisasi Supabase khusus untuk API (Bypass RLS jika pakai Service Key)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || ''; // Gunakan service role untuk update data dari server
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || ''; // Gunakan service role untuk update data dari server
     
     // Inisialisasi admin client untuk operasi backend
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);

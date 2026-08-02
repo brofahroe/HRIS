@@ -5,7 +5,7 @@ import { randomBytes } from "crypto";
 export async function POST(request: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
     // 1. Verifikasi identitas pemanggil dari Bearer token
     const authHeader = request.headers.get('authorization') || '';

@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 export async function updateProfileAction(formData: FormData) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const userId = formData.get('userId') as string;

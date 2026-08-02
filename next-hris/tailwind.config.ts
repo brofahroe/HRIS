@@ -8,20 +8,29 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ["var(--font-inter)"],
+        serif: ["var(--font-playfair)", "serif"],
+      },
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        batik: {
+          bg: '#faf8f5', // Cream/off-white background
+          red: '#c04838', // Terracotta/primary red
+          dark: '#3e2723', // Dark text
+        },
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#fdf6f5',
+          100: '#fbeceb',
+          200: '#f5d6d3',
+          300: '#ecb4ae',
+          400: '#df877d',
+          500: '#cd6053',
+          600: '#c04838', // The terracotta
+          700: '#98382d',
+          800: '#7f3229',
+          900: '#692e26',
         }
       },
     },

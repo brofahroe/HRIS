@@ -182,16 +182,26 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-slate-50">
       <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between sticky top-0 z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-lg">
-            {profile?.full_name?.charAt(0) || sessionUser?.email?.charAt(0).toUpperCase()}
+        <Link href="/dashboard/profile" className="flex items-center gap-3 group hover:opacity-80 transition-opacity">
+          <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold overflow-hidden border-2 border-blue-100 group-hover:border-blue-300 transition-colors">
+            {profile?.photo_url ? (
+              <img src={profile.photo_url} alt="Profile" className="w-full h-full object-cover" />
+            ) : (
+              profile?.full_name?.charAt(0) || "U"
+            )}
           </div>
           <div>
-            <h2 className="font-semibold text-slate-800">{profile?.full_name || sessionUser?.email}</h2>
-            <p className="text-xs text-slate-500">{profile?.position || 'Karyawan'}</p>
+            <h1 className="font-bold text-slate-800 leading-tight">
+              {profile?.full_name || "Memuat..."}
+            </h1>
+            <p className="text-xs text-slate-500">{profile?.position || "Karyawan"}</p>
           </div>
-        </div>
-        <button onClick={handleLogout} className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+        </Link>
+        <button 
+          onClick={handleLogout}
+          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+          title="Keluar"
+        >
           <LogOut size={20} />
         </button>
       </header>

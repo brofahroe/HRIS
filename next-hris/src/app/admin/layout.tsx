@@ -4,11 +4,12 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Users, FileText, Settings, LayoutDashboard, LogOut } from "lucide-react";
+import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays } from "lucide-react";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/users", label: "Data Karyawan", icon: Users },
+  { href: "/admin/attendance", label: "Laporan Absensi", icon: CalendarDays },
   { href: "/admin/payroll", label: "Payroll", icon: FileText },
   { href: "/admin/settings", label: "Pengaturan", icon: Settings },
 ];

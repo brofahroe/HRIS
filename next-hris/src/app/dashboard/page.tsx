@@ -85,16 +85,21 @@ export default function DashboardPage() {
     setShowCamera(false);
   };
 
-  // 2. Ambil Foto
+  // 2. Ambil Foto (Diperkecil agar tidak berat)
   const capturePhoto = () => {
     if (videoRef.current) {
       const canvas = document.createElement("canvas");
-      canvas.width = videoRef.current.videoWidth;
-      canvas.height = videoRef.current.videoHeight;
+      // Batasi resolusi maksimal 600px untuk menghemat ukuran file (mencegah error Payload Too Large)
+      const MAX_WIDTH = 600;
+      const scale = Math.min(1, MAX_WIDTH / videoRef.current.videoWidth);
+      canvas.width = videoRef.current.videoWidth * scale;
+      canvas.height = videoRef.current.videoHeight * scale;
+      
       const ctx = canvas.getContext("2d");
       if (ctx) {
         ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-        const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+        // Kompresi JPEG 70%
+        const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
         setPhotoData(dataUrl);
         // Matikan stream setelah foto diambil
         if (streamRef.current) {

@@ -29,7 +29,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
       const { data: userData } = await supabase
-        .from('users').select('role').eq('auth_id', session.user.id).single();
+        .from('users').select('id, auth_id, role, full_name, must_change_password').eq('auth_id', session.user.id).single();
       if (userData?.role === 'Admin') {
         setAuthorized(true);
         setAdminProfile(userData);

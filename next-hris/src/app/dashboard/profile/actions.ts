@@ -65,6 +65,9 @@ export async function updateProfileAction(formData: FormData) {
         { password: password }
       );
       if (authError) throw authError;
+
+      // Hapus flag wajib ganti password
+      await supabaseAdmin.from('users').update({ must_change_password: false }).eq('id', userId);
     }
 
     revalidatePath('/dashboard/profile');

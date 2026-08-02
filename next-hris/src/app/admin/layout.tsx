@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer } from "lucide-react";
+import ForceChangePassword from "@/app/components/ForceChangePassword";
 
 const navItems = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard },
@@ -20,6 +21,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [pendingOvertime, setPendingOvertime] = useState(0);
+  const [adminProfile, setAdminProfile] = useState<any>(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -29,6 +32,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         .from('users').select('role').eq('auth_id', session.user.id).single();
       if (userData?.role === 'Admin') {
         setAuthorized(true);
+        setAdminProfile(userData);
+        if (userData.must_change_password) setMustChangePassword(true);
         // Ambil jumlah permohonan lembur pending
         const { count } = await supabase
           .from('overtime_requests')
@@ -122,6 +127,16 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
       </main>
+
+      {/* Force Change Password Overlay */}
+      {mustChangePassword && adminProfile && (
+        <ForceChangePassword
+          userId={adminProfile.id}
+          authId={adminProfile.auth_id}
+          userName={adminProfile.full_name}
+          onSuccess={() => setMustChangePassword(false)}
+        />
+      )}
     </div>
   );
 }

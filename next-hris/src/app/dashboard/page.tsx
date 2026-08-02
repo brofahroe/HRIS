@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2 } from "lucide-react";
+import ForceChangePassword from "@/app/components/ForceChangePassword";
 
 type ModalStep = 'camera' | 'form';
 type OvertimeStatus = 'idle' | 'pending' | 'approved' | 'rejected';
@@ -14,6 +15,9 @@ export default function DashboardPage() {
   const [sessionUser, setSessionUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+
+  // Force change password
+  const [mustChangePassword, setMustChangePassword] = useState(false);
 
   const [isCheckingIn, setIsCheckingIn] = useState(false);
   const [todayAttendance, setTodayAttendance] = useState<any>(null);
@@ -48,6 +52,7 @@ export default function DashboardPage() {
 
       if (userData) {
         setProfile(userData);
+        if (userData.must_change_password) setMustChangePassword(true);
         const { data: attData } = await supabase
           .from('attendance').select('*').eq('user_id', userData.id)
           .order('date', { ascending: false });
@@ -533,6 +538,15 @@ export default function DashboardPage() {
             )}
           </div>
         </div>
+      )}
+      {/* Force Change Password Overlay */}
+      {mustChangePassword && profile && (
+        <ForceChangePassword
+          userId={profile.id}
+          authId={profile.auth_id}
+          userName={profile.full_name}
+          onSuccess={() => setMustChangePassword(false)}
+        />
       )}
     </div>
   );

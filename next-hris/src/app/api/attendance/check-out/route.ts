@@ -31,8 +31,14 @@ function normalizeNotes(prevNotes: string | null | undefined, totalHours: number
 export async function POST(request: Request) {
   try {
     // Inisialisasi Supabase Client khusus server
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+
+    if (!supabaseUrl || !supabaseServiceKey) {
+      console.error("Konfigurasi server tidak lengkap: NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diset.");
+      return NextResponse.json({ error: "Konfigurasi server tidak lengkap. Hubungi administrator." }, { status: 500 });
+    }
+
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
     const body = await request.json();

@@ -35,7 +35,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       if (roleError) {
         setAuthError(
           roleError.message ||
-          'Gagal memverifikasi otorisasi (HTTP ' + roleError.status + '). ' +
+          'Gagal memverifikasi otorisasi. ' +
           'Jalankan migrasi supabase_schema.sql ke database.'
         );
         return;

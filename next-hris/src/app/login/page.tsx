@@ -44,7 +44,7 @@ export default function LoginPage() {
         if (roleError) {
           setError(
             roleError.message ||
-              'Gagal memverifikasi peran pengguna (HTTP ' + roleError.status + '). ' +
+              'Gagal memverifikasi peran pengguna. ' +
               'Jalankan migrasi supabase_schema.sql ke database, lalu login kembali.'
           );
           setLoading(false);

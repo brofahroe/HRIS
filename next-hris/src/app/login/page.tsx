@@ -33,11 +33,23 @@ export default function LoginPage() {
       }
 
       if (data.user) {
-        const { data: userData } = await supabase
+        const { data: userData, error: roleError } = await supabase
           .from('users')
           .select('role')
           .eq('auth_id', data.user.id)
           .single();
+
+        // JANGAN diam‑diamarahkan demote admin -> dashboard ketika DB error (mis. 500
+        // karena kolom/policy belum lengkap). Tampilkan pesan supaya jelas akarnya.
+        if (roleError) {
+          setError(
+            roleError.message ||
+              'Gagal memverifikasi peran pengguna (HTTP ' + roleError.status + '). ' +
+              'Jalankan migrasi supabase_schema.sql ke database, lalu login kembali.'
+          );
+          setLoading(false);
+          return;
+        }
 
         if (userData?.role === 'Admin') {
           router.push('/admin');

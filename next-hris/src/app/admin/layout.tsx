@@ -23,13 +23,24 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [pendingOvertime, setPendingOvertime] = useState(0);
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) { router.push('/login'); return; }
-      const { data: userData } = await supabase
+      const { data: userData, error: roleError } = await supabase
         .from('users').select('id, auth_id, role, full_name, must_change_password').eq('auth_id', session.user.id).single();
+
+      if (roleError) {
+        setAuthError(
+          roleError.message ||
+          'Gagal memverifikasi otorisasi (HTTP ' + roleError.status + '). ' +
+          'Jalankan migrasi supabase_schema.sql ke database.'
+        );
+        return;
+      }
+
       if (userData?.role === 'Admin') {
         setAuthorized(true);
         setAdminProfile(userData);
@@ -51,6 +62,17 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     router.push('/login');
   };
+
+  if (authError) {
+    return (
+      <div className="h-screen w-full flex items-center justify-center bg-[#faf8f5] text-red-600">
+        <div className="max-w-md text-center p-6 bg-white border border-red-100 rounded-2xl shadow">
+          <p className="font-semibold mb-2">Otorisasi gagal</p>
+          <p className="text-sm text-[#3e2723]/70">{authError}</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!authorized) {
     return (

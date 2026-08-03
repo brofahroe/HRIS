@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/authClient";
 import { Camera, CheckCircle, AlertTriangle, ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import Script from "next/script";
@@ -82,11 +83,13 @@ export default function FaceRegistrationPage() {
         setIsRegistering(false);
         return;
       }
+      const token = await getAccessToken();
+      if (!token) { alert("Sesi habis. Silakan login ulang."); setIsRegistering(false); return; }
       const descriptorArray = Array.from(detection.descriptor);
       const res = await fetch('/api/attendance/register-face', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, faceDescriptor: descriptorArray })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ faceDescriptor: descriptorArray })
       });
       const result = await res.json();
       if (res.ok) {

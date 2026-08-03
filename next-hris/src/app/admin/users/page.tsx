@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/authClient";
 import { updateUser, deleteUser, createUser, resetPassword } from "./actions";
 import { Edit2, Trash2, X, Plus, ChevronUp, ChevronDown, ChevronsUpDown, KeyRound, Loader2 } from "lucide-react";
 
@@ -90,7 +91,9 @@ export default function UsersPage() {
 
   const handleDeleteClick = async (id: string, authId: string, name: string) => {
     if (confirm(`Apakah Anda yakin ingin menghapus data karyawan ${name} secara permanen?`)) {
-      const res = await deleteUser(id, authId);
+      const token = await getAccessToken();
+      if (!token) { alert("Sesi habis. Silakan login ulang."); return; }
+      const res = await deleteUser(token, id, authId);
       if (res.success) { alert("Karyawan berhasil dihapus!"); fetchUsers(); }
       else alert("Gagal menghapus: " + res.error);
     }
@@ -99,21 +102,25 @@ export default function UsersPage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
+
+    const token = await getAccessToken();
+    if (!token) { alert("Sesi habis. Silakan login ulang."); setIsSaving(false); return; }
+
     let res: any;
 
     if (createMode) {
       const fd = new FormData();
       Object.entries(editingUser).forEach(([k, v]) => fd.set(k, String(v)));
-      res = await createUser(fd);
+      res = await createUser(token, fd);
       if (res.success) alert(res.message);
     } else {
-      res = await updateUser(editingUser.id, editingUser);
+      res = await updateUser(token, editingUser.id, editingUser);
     }
 
     // Update password jika diisi (mode edit saja)
     if (!createMode && newPassword && res.success) {
       setIsResetting(true);
-      const pwRes = await resetPassword(editingUser.auth_id, newPassword);
+      const pwRes = await resetPassword(token, editingUser.auth_id, newPassword);
       setIsResetting(false);
       if (!pwRes.success) {
         alert("Data tersimpan, tapi gagal update password: " + pwRes.error);

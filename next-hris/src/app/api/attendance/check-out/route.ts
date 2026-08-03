@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthedUser, getBearerToken } from "@/lib/apiAuth";
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; // Radius bumi dalam km
@@ -21,7 +22,6 @@ const MAX_RADIUS_KM = 0.1; // 100 meter
 
 function normalizeNotes(prevNotes: string | null | undefined, totalHours: number | null) {
   let base = prevNotes || '';
-  // Hapus catatan TotalJam yang lama bila ada
   base = base.replace(/\bTotalJam:\s*[\d.]+\s*/g, '').trim();
   if (totalHours === null) return base;
   const suffix = `TotalJam: ${totalHours}`;
@@ -30,9 +30,8 @@ function normalizeNotes(prevNotes: string | null | undefined, totalHours: number
 
 export async function POST(request: Request) {
   try {
-    // Inisialisasi Supabase Client khusus server
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Konfigurasi server tidak lengkap: NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diset.");
@@ -41,14 +40,19 @@ export async function POST(request: Request) {
 
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await request.json();
-    const { userId, lat, lng, photoBase64, time, workUpdate } = body;
+    const authedUser = await getAuthedUser(getBearerToken(request));
+    if (!authedUser) {
+      return NextResponse.json({ error: "Tidak terautentikasi. Silakan login ulang." }, { status: 401 });
+    }
 
-    if (!userId || !lat || !lng) {
+    const body = await request.json();
+    const { lat, lng, photoBase64, workUpdate } = body;
+    const userId = authedUser.id;
+
+    if (!lat || !lng) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
     }
 
-    // 1. Validasi lokasi kantor
     let minDistance = Infinity;
     let closestOffice = '';
     for (const office of OFFICE_LOCATIONS) {
@@ -66,10 +70,11 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-    const checkOutTime = new Date(time || Date.now());
-    const todayStr = checkOutTime.toISOString().split('T')[0];
+    const WIB_OFFSET_HOURS = 7;
+    const checkOutTime = new Date();
+    const wibNow = new Date(checkOutTime.getTime() + WIB_OFFSET_HOURS * 60 * 60 * 1000);
+    const todayStr = wibNow.toISOString().slice(0, 10); // tanggal WIB
 
-    // 2. Cari absensi masuk hari ini (harus ada check-in dulu)
     const { data: existing, error: findError } = await supabaseAdmin
       .from('attendance')
       .select('id, check_in_time, notes')
@@ -84,7 +89,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // 2b. Cek apakah sudah checkout
     const { data: current, error: currentErr } = await supabaseAdmin
       .from('attendance')
       .select('check_out_time')
@@ -96,14 +100,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Anda sudah melakukan Check-Out hari ini." }, { status: 409 });
     }
 
-    // 3. Hitung total jam kerja
     let totalHours = null;
     if (existing.check_in_time) {
       const ms = checkOutTime.getTime() - new Date(existing.check_in_time).getTime();
       if (ms > 0) totalHours = Math.round((ms / (1000 * 60 * 60)) * 100) / 100;
     }
 
-    // 4. Upload foto selfie pulang ke storage
     let photoUrl = null;
     if (photoBase64) {
       try {
@@ -126,7 +128,6 @@ export async function POST(request: Request) {
       }
     }
 
-    // 5. Update baris attendance — simpan work_update ke kolom tersendiri dan totalJam ke notes
     const notes = normalizeNotes(existing.notes, totalHours);
 
     const { data, error } = await supabaseAdmin
@@ -156,3 +157,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Kesalahan: ${error.message || JSON.stringify(error)}` }, { status: 500 });
   }
 }
+

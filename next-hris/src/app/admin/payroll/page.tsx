@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Calculator, FileText } from "lucide-react";
+import { getAccessToken } from "@/lib/authClient";
 import { processPayrollAction } from "./actions";
 
 export default function PayrollPage() {
@@ -12,7 +13,9 @@ export default function PayrollPage() {
 
   const handleGenerate = async () => {
     setLoading(true);
-    const res = await processPayrollAction(selectedYear, selectedMonth);
+    const token = await getAccessToken();
+    if (!token) { setLoading(false); alert("Sesi habis. Silakan login ulang."); return; }
+    const res = await processPayrollAction(token, selectedYear, selectedMonth);
     setLoading(false);
     if (res.success) {
       setPayrollData(res.data);

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/authClient";
 import { User, Camera, ArrowLeft, Save, Loader2, Lock } from "lucide-react";
 import { updateProfileAction } from "./actions";
 
@@ -54,9 +55,10 @@ export default function ProfilePage() {
     if (password && password.length < 6) { alert("Password baru minimal 6 karakter."); return; }
     setSaving(true);
     try {
+      const token = await getAccessToken();
+      if (!token) { alert("Sesi habis. Silakan login ulang."); setSaving(false); return; }
       const formData = new FormData();
-      formData.append('userId', profile.id);
-      formData.append('authId', profile.auth_id);
+      formData.append('token', token);
       formData.append('fullName', fullName);
       formData.append('password', password);
       formData.append('photoBase64', photoBase64);

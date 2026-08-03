@@ -22,6 +22,7 @@ CREATE TABLE users (
   child_allowance NUMERIC(15, 2) DEFAULT 0,
   photo_url TEXT,
   face_descriptor TEXT, -- Menyimpan data biometrik matriks wajah (JSON array)
+  must_change_password BOOLEAN DEFAULT FALSE, -- Wajib ganti password saat login pertama
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 
@@ -52,9 +53,31 @@ CREATE TABLE attendance (
   check_out_photo TEXT,
   status attendance_status DEFAULT 'Hadir',
   notes TEXT,
+  work_update TEXT, -- Update pekerjaan saat check-out
+  is_overtime BOOLEAN DEFAULT FALSE, -- True jika disetujui sebagai lembur
+  overtime_hours NUMERIC(15, 2) DEFAULT 0, -- Jam lembur (2x jam kerja)
+  overtime_request_id UUID, -- diisi via ALTER di bawah (FK ke overtime_requests)
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   UNIQUE(user_id, date)
 );
+
+-- 4b. Table: overtime_requests (permohonan lembur)
+CREATE TABLE overtime_requests (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  reason TEXT NOT NULL,
+  status VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
+  reviewed_by UUID REFERENCES users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
+  UNIQUE(user_id, date)
+);
+
+-- Pasang FK overtime_request_id -> overtime_requests setelah tabel terkait ada
+ALTER TABLE attendance
+  ADD CONSTRAINT fk_attendance_overtime
+  FOREIGN KEY (overtime_request_id) REFERENCES overtime_requests(id) ON DELETE SET NULL;
 
 -- 5. Table: payroll (hasil kalkulasi gaji bulanan)
 CREATE TABLE payroll (
@@ -79,6 +102,17 @@ CREATE TABLE payroll (
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
+ALTER TABLE overtime_requests ENABLE ROW LEVEL SECURITY;
+
+-- Karyawan bisa baca profil sendiri
+CREATE POLICY "Users can view own profile"
+ON users FOR SELECT
+USING (auth.uid() = auth_id);
+
+-- Admin bisa baca semua profil
+CREATE POLICY "Admins can view all profiles"
+ON users FOR SELECT
+USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
 
 -- Karyawan hanya bisa melihat data absen sendiri
 CREATE POLICY "Employees can view own attendance"
@@ -98,6 +132,16 @@ USING (auth.uid() = (SELECT auth_id FROM users WHERE id = payroll.user_id));
 -- Admin bisa melihat seluruh payroll
 CREATE POLICY "Admins can view all payroll"
 ON payroll FOR SELECT
+USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
+
+-- Karyawan hanya bisa lihat permohonan lembur sendiri
+CREATE POLICY "Employees can view own overtime"
+ON overtime_requests FOR SELECT
+USING (auth.uid() = (SELECT auth_id FROM users WHERE id = overtime_requests.user_id));
+
+-- Admin bisa lihat semua permohonan lembur
+CREATE POLICY "Admins can view all overtime"
+ON overtime_requests FOR SELECT
 USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
 
 -- (Tambahkan policy insert/update sesuai kebutuhan aplikasi)

@@ -1,14 +1,21 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthedAdmin, getBearerToken } from "@/lib/apiAuth";
 
 export async function POST(request: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Konfigurasi server tidak lengkap." }, { status: 500 });
     }
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Hanya Admin yang boleh menyetujui/menolak permohonan lembur.
+    const admin = await getAuthedAdmin(getBearerToken(request));
+    if (!admin) {
+      return NextResponse.json({ error: "Akses ditolak. Hanya Admin." }, { status: 403 });
+    }
 
     const { requestId, action } = await request.json(); // action: 'approve' | 'reject'
     if (!requestId || !["approve", "reject"].includes(action)) {
@@ -66,3 +73,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

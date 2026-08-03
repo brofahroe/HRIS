@@ -1,5 +1,6 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthedUser, getBearerToken } from "@/lib/apiAuth";
 
 // Haversine formula untuk menghitung jarak antara dua koordinat (dalam kilometer)
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
   try {
     // Inisialisasi Supabase khusus untuk API (Bypass RLS jika pakai Service Key)
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     if (!supabaseUrl || !supabaseServiceKey) {
       console.error("Konfigurasi server tidak lengkap: NEXT_PUBLIC_SUPABASE_URL atau SUPABASE_SERVICE_ROLE_KEY belum diset.");
@@ -35,11 +36,33 @@ export async function POST(request: Request) {
     // Inisialisasi admin client untuk operasi backend
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await request.json();
-    const { userId, lat, lng, photoBase64, time, overtimeRequestId } = body;
+    // Verifikasi identitas pemanggil dari Bearer token — JANGAN percaya userId dari body,
+    // karena body sepenuhnya dikontrol oleh client dan bisa dipalsukan untuk absen-kan orang lain.
+    const authedUser = await getAuthedUser(getBearerToken(request));
+    if (!authedUser) {
+      return NextResponse.json({ error: "Tidak terautentikasi. Silakan login ulang." }, { status: 401 });
+    }
 
-    if (!userId || !lat || !lng) {
+    const body = await request.json();
+    const { lat, lng, photoBase64, overtimeRequestId } = body;
+    const userId = authedUser.id; // selalu dari token, bukan dari body
+
+    if (!lat || !lng) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
+    }
+
+    // Jika ada overtimeRequestId, pastikan itu benar milik user ini dan sudah disetujui —
+    // mencegah user menempelkan ID lembur milik orang lain / yang belum disetujui.
+    let verifiedOvertimeRequestId: string | undefined = undefined;
+    if (overtimeRequestId) {
+      const { data: otReq } = await supabaseAdmin
+        .from("overtime_requests")
+        .select("id, user_id, status")
+        .eq("id", overtimeRequestId)
+        .single();
+      if (otReq && otReq.user_id === userId && otReq.status === "approved") {
+        verifiedOvertimeRequestId = otReq.id;
+      }
     }
 
     // 1. Validasi Jarak Lokasi (Cari lokasi terdekat)
@@ -61,12 +84,20 @@ export async function POST(request: Request) {
       }, { status: 403 });
     }
 
-    // 2. Tentukan Status Keterlambatan
-    const checkInTime = new Date(time || Date.now());
-    const maxCheckInTime = new Date(checkInTime);
-    maxCheckInTime.setHours(8, 0, 0, 0);
-    const status = checkInTime > maxCheckInTime ? 'Terlambat' : 'Hadir';
-    const todayStr = checkInTime.toISOString().split('T')[0];
+    // 2. Tentukan Status Keterlambatan & tanggal WIB
+    // WIB = UTC+7. Komputasi eksplisit agar tidak bergantung timezone server (Vercel default UTC).
+    const WIB_OFFSET_HOURS = 7;
+    const WORK_START_HOUR = 8; // 08:00 WIB
+    const now = new Date(); // instan UTC real
+    const wibNow = new Date(now.getTime() + WIB_OFFSET_HOURS * 60 * 60 * 1000); // WIB wall-clock as UTC instant
+
+    // Cutoff 08:00 WIB diekspresikan sebagai instan UTC (08:00 WIB = 01:00 UTC)
+    const cutoffWIB = new Date(wibNow);
+    cutoffWIB.setUTCHours(WORK_START_HOUR, 0, 0, 0); // 08:00 WIB diekspresikan dlm "WIB-as-UTC"
+    const status = wibNow > cutoffWIB ? 'Terlambat' : 'Hadir';
+
+    // Tanggal WIB (YYYY-MM-DD di WIB)
+    const todayStr = wibNow.toISOString().slice(0, 10);
 
     // 3. Upload Foto Selfie ke Supabase Storage
     let photoUrl = null;
@@ -104,13 +135,13 @@ export async function POST(request: Request) {
       .upsert({
         user_id: userId,
         date: todayStr,
-        check_in_time: checkInTime.toISOString(),
+        check_in_time: now.toISOString(),
         check_in_lat: lat,
         check_in_lng: lng,
         check_in_photo: photoUrl,
         status: status,
-        // Tandai sebagai lembur jika ada overtimeRequestId (approval akan set is_overtime=true)
-        ...(overtimeRequestId ? { overtime_request_id: overtimeRequestId } : {}),
+        // Tandai sebagai lembur jika ada overtimeRequestId yang terverifikasi (approval akan set is_overtime=true)
+        ...(verifiedOvertimeRequestId ? { overtime_request_id: verifiedOvertimeRequestId } : {}),
       }, {
         onConflict: 'user_id,date'
       })
@@ -130,3 +161,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Kesalahan: ${error.message || JSON.stringify(error)}` }, { status: 500 });
   }
 }
+

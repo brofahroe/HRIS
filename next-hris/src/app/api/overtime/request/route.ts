@@ -1,19 +1,27 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthedUser, getBearerToken } from "@/lib/apiAuth";
 
 export async function POST(request: Request) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Konfigurasi server tidak lengkap." }, { status: 500 });
     }
     const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-    const body = await request.json();
-    const { userId, date, reason } = body;
+    // Verifikasi identitas pemanggil — jangan percaya userId dari body.
+    const authedUser = await getAuthedUser(getBearerToken(request));
+    if (!authedUser) {
+      return NextResponse.json({ error: "Tidak terautentikasi. Silakan login ulang." }, { status: 401 });
+    }
 
-    if (!userId || !date || !reason?.trim()) {
+    const body = await request.json();
+    const { date, reason } = body;
+    const userId = authedUser.id;
+
+    if (!date || !reason?.trim()) {
       return NextResponse.json({ error: "Data tidak lengkap." }, { status: 400 });
     }
 
@@ -56,3 +64,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

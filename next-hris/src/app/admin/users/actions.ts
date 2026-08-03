@@ -2,14 +2,29 @@
 
 import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { getAuthedAdmin } from "@/lib/apiAuth";
 
 // Menggunakan Service Role Key agar Admin bisa bypass RLS saat mengedit/menghapus
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-export async function createUser(formData: FormData) {
+/**
+ * Semua Server Action di file ini adalah endpoint jaringan yang bisa dipanggil
+ * langsung (bukan hanya lewat UI admin), dan menggunakan Service Role Key yang
+ * bypass RLS. Karena itu setiap fungsi WAJIB memverifikasi bahwa pemanggil
+ * benar login sebagai Admin sebelum melakukan apa pun.
+ */
+async function assertAdmin(token: string) {
+  const admin = await getAuthedAdmin(token);
+  if (!admin) throw new Error("Akses ditolak. Hanya Admin yang dapat melakukan aksi ini.");
+  return admin;
+}
+
+export async function createUser(token: string, formData: FormData) {
   try {
+    await assertAdmin(token);
+
     const email = (formData.get('email') as string || '').trim();
     const nik = (formData.get('nik') as string || '').trim();
     const fullName = (formData.get('full_name') as string || '').trim();
@@ -62,8 +77,10 @@ export async function createUser(formData: FormData) {
   }
 }
 
-export async function updateUser(userId: string, data: any) {
+export async function updateUser(token: string, userId: string, data: any) {
   try {
+    await assertAdmin(token);
+
     const { error } = await supabase
       .from('users')
       .update({
@@ -85,8 +102,10 @@ export async function updateUser(userId: string, data: any) {
   }
 }
 
-export async function resetPassword(authId: string, newPassword: string) {
+export async function resetPassword(token: string, authId: string, newPassword: string) {
   try {
+    await assertAdmin(token);
+
     if (!authId) return { success: false, error: "Auth ID tidak ditemukan." };
     if (newPassword.length < 6) return { success: false, error: "Password minimal 6 karakter." };
 
@@ -104,8 +123,10 @@ export async function resetPassword(authId: string, newPassword: string) {
   }
 }
 
-export async function deleteUser(userId: string, authId: string) {
+export async function deleteUser(token: string, userId: string, authId: string) {
   try {
+    await assertAdmin(token);
+
     // 1. Hapus dari public.users
     const { error: dbError } = await supabase
       .from('users')

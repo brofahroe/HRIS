@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/authClient";
 import { CheckCircle, XCircle, Clock, ClipboardList, RefreshCw } from "lucide-react";
 
 type OTStatus = "pending" | "approved" | "rejected";
@@ -39,9 +40,11 @@ export default function OvertimePage() {
   const handleAction = async (requestId: string, action: "approve" | "reject") => {
     setProcessing(requestId);
     try {
+      const token = await getAccessToken();
+      if (!token) { alert("Sesi habis. Silakan login ulang."); setProcessing(null); return; }
       const res = await fetch("/api/overtime/approve", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ requestId, action }),
       });
       const result = await res.json();

@@ -1,9 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
+import { getAccessToken } from "@/lib/authClient";
+import { getWIBDate } from "@/lib/wib";
 import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2 } from "lucide-react";
 import ForceChangePassword from "@/app/components/ForceChangePassword";
 
@@ -58,13 +60,13 @@ export default function DashboardPage() {
           .order('date', { ascending: false });
         if (attData) {
           setHistory(attData);
-          const todayStr = new Date().toISOString().split('T')[0];
+          const todayStr = getWIBDate();
           const today = attData.find((a: any) => a.date === todayStr);
           if (today) setTodayAttendance(today);
         }
 
         // Cek apakah hari ini hari libur/minggu
-        const todayStr = new Date().toISOString().split('T')[0];
+        const todayStr = getWIBDate();
         const dow = new Date().getDay();
         let offDay = false;
         let label = '';
@@ -116,12 +118,14 @@ export default function DashboardPage() {
   const handleOvertimeSubmit = async () => {
     if (!profile || !overtimeReason.trim()) return;
     setSubmittingOvertime(true);
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getWIBDate();
     try {
+      const token = await getAccessToken();
+      if (!token) { alert("Sesi habis. Silakan login ulang."); setSubmittingOvertime(false); return; }
       const res = await fetch('/api/overtime/request', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, date: todayStr, reason: overtimeReason }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ date: todayStr, reason: overtimeReason }),
       });
       const result = await res.json();
       if (res.ok && result.success) {
@@ -182,9 +186,11 @@ export default function DashboardPage() {
     else setModalStep('form');
   };
 
-  const submitAttendance = (extraWorkUpdate?: string) => {
+  const submitAttendance = async (extraWorkUpdate?: string) => {
     if (!profile || !photoData) return;
     setIsCheckingIn(true);
+    const token = await getAccessToken();
+    if (!token) { alert("Sesi habis. Silakan login ulang."); setIsCheckingIn(false); return; }
     if (!navigator.geolocation) {
       alert("GPS tidak didukung."); setIsCheckingIn(false); return;
     }
@@ -196,10 +202,10 @@ export default function DashboardPage() {
         try {
           const res = await fetch(endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({
-              userId: profile.id, lat: latitude, lng: longitude,
-              photoBase64: photoData, time: new Date().toISOString(),
+              lat: latitude, lng: longitude,
+              photoBase64: photoData,
               ...(cameraMode === 'out' && { workUpdate: update }),
               ...(cameraMode === 'in' && isOffDay && overtimeRequestId && { overtimeRequestId }),
             })
@@ -211,7 +217,7 @@ export default function DashboardPage() {
             const { data } = await supabase.from('attendance').select('*').eq('user_id', profile.id).order('date', { ascending: false });
             if (data) {
               setHistory(data);
-              const todayStr = new Date().toISOString().split('T')[0];
+              const todayStr = getWIBDate();
               const today = data.find((a: any) => a.date === todayStr);
               if (today) setTodayAttendance(today);
             }
@@ -239,7 +245,7 @@ export default function DashboardPage() {
     );
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getWIBDate();
 
   // Apakah boleh check-in hari ini?
   // - Hari biasa: selalu boleh
@@ -553,3 +559,5 @@ export default function DashboardPage() {
     </div>
   );
 }
+
+

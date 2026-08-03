@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, KeyRound, ShieldCheck } from "lucide-react";
 import { updateProfileAction } from "@/app/dashboard/profile/actions";
+import { getAccessToken } from "@/lib/authClient";
 
 interface Props {
   userId: string;
@@ -30,9 +31,11 @@ export default function ForceChangePassword({ userId, authId, userName, onSucces
 
     setSaving(true);
     try {
+      const token = await getAccessToken();
+      if (!token) { setError("Sesi habis. Silakan login ulang."); setSaving(false); return; }
+
       const fd = new FormData();
-      fd.append("userId", userId);
-      fd.append("authId", authId);
+      fd.append("token", token);
       fd.append("fullName", userName);
       fd.append("password", newPassword);
       fd.append("photoBase64", "");

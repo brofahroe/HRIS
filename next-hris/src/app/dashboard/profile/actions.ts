@@ -1,23 +1,27 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
+import { getAuthedUser, getSupabaseAdmin } from "@/lib/apiAuth";
 
 export async function updateProfileAction(formData: FormData) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
-    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseAdmin = getSupabaseAdmin();
 
-    const userId = formData.get('userId') as string;
-    const authId = formData.get('authId') as string;
+    // PENTING: userId & authId TIDAK diambil dari formData (bisa dipalsukan
+    // oleh siapa saja untuk mengganti password/foto akun orang lain).
+    // Sebagai gantinya, identitas selalu diverifikasi dari access token sesi
+    // yang aktif, lalu operasi hanya menyasar akun milik token tersebut.
+    const token = formData.get('token') as string;
+    const authedUser = await getAuthedUser(token);
+    if (!authedUser) {
+      return { success: false, error: "Sesi tidak valid. Silakan login ulang." };
+    }
+    const userId = authedUser.id;
+    const authId = authedUser.auth_id;
+
     const fullName = formData.get('fullName') as string;
     const password = formData.get('password') as string;
     const photoBase64 = formData.get('photoBase64') as string;
-
-    if (!userId || !authId) {
-      return { success: false, error: "Data pengguna tidak valid." };
-    }
 
     let photoUrl = undefined;
 

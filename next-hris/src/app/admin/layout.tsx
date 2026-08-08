@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer } from "lucide-react";
+import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer, Menu, X } from "lucide-react";
 import ForceChangePassword from "@/app/components/ForceChangePassword";
 
 const navItems = [
@@ -24,6 +24,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,7 +46,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         setAuthorized(true);
         setAdminProfile(userData);
         if (userData.must_change_password) setMustChangePassword(true);
-        // Ambil jumlah permohonan lembur pending
         const { count } = await supabase
           .from('overtime_requests')
           .select('*', { count: 'exact', head: true })
@@ -58,10 +58,41 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     checkAuth();
   }, [router]);
 
+  useEffect(() => {
+    setSidebarOpen(false);
+  }, [pathname]);
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.push('/login');
   };
+
+  const NavContent = () => (
+    <nav className="flex-1 py-4 px-3 space-y-1">
+      {navItems.map(({ href, label, icon: Icon }) => {
+        const isActive = pathname === href;
+        return (
+          <Link
+            key={href}
+            href={href}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
+              isActive
+                ? "bg-red-50 text-[#c04838]"
+                : "text-[#3e2723]/60 hover:bg-[#faf8f5] hover:text-[#3e2723]"
+            }`}
+          >
+            <Icon size={18} />
+            <span className="flex-1">{label}</span>
+            {href === "/admin/overtime" && pendingOvertime > 0 && (
+              <span className="ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 leading-none">
+                {pendingOvertime}
+              </span>
+            )}
+          </Link>
+        );
+      })}
+    </nav>
+  );
 
   if (authError) {
     return (
@@ -84,9 +115,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-screen bg-[#faf8f5]">
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <aside className="w-64 bg-white border-r border-[#e8e0d8] flex-col hidden md:flex">
-        {/* Logo */}
         <div className="h-16 flex items-center px-6 border-b border-[#e8e0d8] gap-3">
           <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-9 h-9 object-contain shrink-0" />
           <div>
@@ -94,32 +124,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             <div className="text-[10px] tracking-widest text-[#3e2723]/40 font-bold uppercase mt-0.5">Admin Panel</div>
           </div>
         </div>
-
-        <nav className="flex-1 py-4 px-3 space-y-1">
-          {navItems.map(({ href, label, icon: Icon }) => {
-            const isActive = pathname === href;
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl font-medium text-sm transition-colors ${
-                  isActive
-                    ? "bg-red-50 text-[#c04838]"
-                    : "text-[#3e2723]/60 hover:bg-[#faf8f5] hover:text-[#3e2723]"
-                }`}
-              >
-                <Icon size={18} />
-                <span className="flex-1">{label}</span>
-                {href === "/admin/overtime" && pendingOvertime > 0 && (
-                  <span className="ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 leading-none">
-                    {pendingOvertime}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
+        <NavContent />
         <div className="p-4 border-t border-[#e8e0d8]">
           <button
             onClick={handleLogout}
@@ -131,21 +136,57 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </div>
       </aside>
 
+      {/* Mobile Drawer */}
+      {sidebarOpen && (
+        <>
+          <div className="fixed inset-0 bg-black/40 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />
+          <aside className="fixed inset-y-0 left-0 w-64 bg-white border-r border-[#e8e0d8] z-50 flex flex-col md:hidden transition-transform">
+            <div className="h-16 flex items-center justify-between px-6 border-b border-[#e8e0d8] gap-3">
+              <div className="flex items-center gap-3">
+                <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-9 h-9 object-contain shrink-0" />
+                <div>
+                  <div className="font-bold text-[#c04838] leading-none text-sm">Batik Seng</div>
+                  <div className="text-[10px] tracking-widest text-[#3e2723]/40 font-bold uppercase mt-0.5">Admin Panel</div>
+                </div>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-2 text-[#3e2723]/40 hover:text-[#c04838] rounded-lg transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <NavContent />
+            <div className="p-4 border-t border-[#e8e0d8]">
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-3 px-3 py-2.5 w-full rounded-xl text-[#c04838] hover:bg-red-50 font-medium text-sm transition-colors"
+              >
+                <LogOut size={18} />
+                Keluar
+              </button>
+            </div>
+          </aside>
+        </>
+      )}
+
       {/* Main */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Mobile Header */}
-        <header className="h-16 bg-white border-b border-[#e8e0d8] flex items-center justify-between px-6 md:hidden">
-          <div className="flex items-center gap-2">
-            <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-8 h-8 object-contain" />
-            <span className="font-bold text-[#c04838] text-sm">Batik Seng Admin</span>
+        <header className="h-16 bg-white border-b border-[#e8e0d8] flex items-center justify-between px-4 md:hidden">
+          <div className="flex items-center gap-3">
+            <button onClick={() => setSidebarOpen(true)} className="p-2 -ml-2 text-[#3e2723]/70 hover:text-[#c04838] rounded-lg transition-colors" aria-label="Buka menu">
+              <Menu size={22} />
+            </button>
+            <div className="flex items-center gap-2">
+              <img src="/Batik Seng-02.png" alt="Batik Seng" className="w-8 h-8 object-contain" />
+              <span className="font-bold text-[#c04838] text-sm">Batik Seng Admin</span>
+            </div>
           </div>
-          <button onClick={handleLogout} className="p-2 text-[#c04838] hover:bg-red-50 rounded-lg transition-colors">
+          <button onClick={handleLogout} className="p-2 text-[#c04838] hover:bg-red-50 rounded-lg transition-colors" aria-label="Keluar">
             <LogOut size={20} />
           </button>
         </header>
 
         {/* Page Content */}
-        <div className="flex-1 overflow-auto p-6 md:p-8">
+        <div className="flex-1 overflow-auto p-4 md:p-8">
           {children}
         </div>
       </main>

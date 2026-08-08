@@ -63,10 +63,9 @@ export default function ForceChangePassword({ userId, authId, userName, onSucces
 
   return (
     <div className="fixed inset-0 z-[200] bg-[#3e2723]/70 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
-
+      <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
         {/* Header */}
-        <div className="bg-[#faf8f5] px-8 pt-8 pb-6 border-b border-[#e8e0d8] text-center">
+        <div className="bg-[#faf8f5] px-6 pt-6 pb-4 border-b border-[#e8e0d8] text-center shrink-0">
           <div className="w-14 h-14 bg-red-50 text-[#c04838] rounded-2xl flex items-center justify-center mx-auto mb-4">
             <KeyRound size={26} />
           </div>
@@ -78,7 +77,7 @@ export default function ForceChangePassword({ userId, authId, userName, onSucces
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="px-8 py-6 space-y-5">
+        <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5 overflow-y-auto safe-bottom">
           {error && (
             <div className="p-3 bg-red-50 border border-red-100 text-red-600 rounded-xl text-sm text-center">
               {error}

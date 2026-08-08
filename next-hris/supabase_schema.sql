@@ -115,7 +115,37 @@ ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
 ALTER TABLE overtime_requests ENABLE ROW LEVEL SECURITY;
 
--- 7. Policies (guarded — tidak error bila sudah ada)
+-- 6b. Unik per akun auth (dibutuhkan agar lookup role auth_id -> role pasti 1 baris)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'users_auth_id_unique') THEN
+    IF (SELECT count(*) FROM (
+      SELECT auth_id FROM public.users WHERE auth_id IS NOT NULL
+      GROUP BY auth_id HAVING count(*) > 1
+    ) t) = 0 THEN
+      ALTER TABLE users ADD CONSTRAINT users_auth_id_unique UNIQUE (auth_id);
+    END IF;
+  END IF;
+END $$;
+
+-- 7. Helper: role user yang terautentikasi.
+--    SECURITY DEFINER agar tidak rekursi / tidak memicu
+--    "infinite recursion detected in policy for relation users" — Postgres tidak
+--    merekursi polisi yang memanggil fungsi, dan fungsi ini bypass RLS karena
+--    dijalankan sebagai owner (postgres superuser). Sumber otoritas tetap
+--    public.users.role (tidak perlu ditulis ke app_metadata / JWT).
+CREATE OR REPLACE FUNCTION public.current_user_role()
+RETURNS user_role LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT role FROM public.users WHERE auth_id = auth.uid();
+$$;
+REVOKE ALL ON FUNCTION public.current_user_role() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated, anon;
+
+-- 8. Policies.
+--    Kebijakan "view all" admin memakai current_user_role() (bukan sub-query ke
+--    tabel users itu sendiri) agar tidak rekursi. Policy yang sudah ada lewat
+--    run sebelumnya (versi rekursif) di-DROP dulu lalu dibuat ulang, sehingga
+--    script tetap idempotent dan selalu menghasilkan state yang benar.
 DO $$
 BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Users can view own profile') THEN
@@ -123,38 +153,34 @@ BEGIN
     ON users FOR SELECT USING (auth.uid() = auth_id);
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all profiles') THEN
-    CREATE POLICY "Admins can view all profiles"
-    ON users FOR SELECT USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
-  END IF;
+  DROP POLICY IF EXISTS "Admins can view all profiles" ON users;
+  CREATE POLICY "Admins can view all profiles"
+  ON users FOR SELECT USING (public.current_user_role() = 'Admin');
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Employees can view own attendance') THEN
     CREATE POLICY "Employees can view own attendance"
     ON attendance FOR SELECT USING (auth.uid() = (SELECT auth_id FROM users WHERE id = attendance.user_id));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all attendance') THEN
-    CREATE POLICY "Admins can view all attendance"
-    ON attendance FOR SELECT USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
-  END IF;
+  DROP POLICY IF EXISTS "Admins can view all attendance" ON attendance;
+  CREATE POLICY "Admins can view all attendance"
+  ON attendance FOR SELECT USING (public.current_user_role() = 'Admin');
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Employees can view own payroll') THEN
     CREATE POLICY "Employees can view own payroll"
     ON payroll FOR SELECT USING (auth.uid() = (SELECT auth_id FROM users WHERE id = payroll.user_id));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all payroll') THEN
-    CREATE POLICY "Admins can view all payroll"
-    ON payroll FOR SELECT USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
-  END IF;
+  DROP POLICY IF EXISTS "Admins can view all payroll" ON payroll;
+  CREATE POLICY "Admins can view all payroll"
+  ON payroll FOR SELECT USING (public.current_user_role() = 'Admin');
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Employees can view own overtime') THEN
     CREATE POLICY "Employees can view own overtime"
     ON overtime_requests FOR SELECT USING (auth.uid() = (SELECT auth_id FROM users WHERE id = overtime_requests.user_id));
   END IF;
 
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Admins can view all overtime') THEN
-    CREATE POLICY "Admins can view all overtime"
-    ON overtime_requests FOR SELECT USING ((SELECT role FROM users WHERE auth_id = auth.uid()) = 'Admin');
-  END IF;
+  DROP POLICY IF EXISTS "Admins can view all overtime" ON overtime_requests;
+  CREATE POLICY "Admins can view all overtime"
+  ON overtime_requests FOR SELECT USING (public.current_user_role() = 'Admin');
 END $$;

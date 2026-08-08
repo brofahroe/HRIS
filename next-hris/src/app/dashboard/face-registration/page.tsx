@@ -150,7 +150,7 @@ export default function FaceRegistrationPage() {
               </p>
             </div>
 
-            <div className="relative bg-[#3e2723] aspect-[3/4] w-full flex items-center justify-center overflow-hidden">
+            <div className="relative bg-[#3e2723] w-full overflow-hidden flex items-center justify-center max-h-[55vh] sm:aspect-[3/4]">
               <video
                 ref={videoRef}
                 onPlay={handleVideoPlay}

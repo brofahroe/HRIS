@@ -225,8 +225,8 @@ export default function UsersPage() {
       {/* Modal */}
       {isModalOpen && editingUser && (
         <div className="fixed inset-0 bg-[#3e2723]/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl">
-            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8]">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8] shrink-0">
               <h3 className="font-serif text-xl font-bold text-[#3e2723]">
                 {createMode ? 'Tambah Karyawan' : 'Edit Karyawan'}
               </h3>
@@ -235,7 +235,7 @@ export default function UsersPage() {
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="p-6 space-y-4 max-h-[75vh] overflow-y-auto">
+            <form onSubmit={handleSave} className="p-6 space-y-4 overflow-y-auto">
               <div className="grid grid-cols-2 gap-4">
                 {createMode && (
                   <div className="col-span-2 space-y-1.5">

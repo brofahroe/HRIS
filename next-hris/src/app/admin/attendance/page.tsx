@@ -292,8 +292,8 @@ export default function AttendanceReportPage() {
       {/* Detail Modal — update kerja lengkap */}
       {selected && (
         <div className="fixed inset-0 bg-[#3e2723]/60 z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8]">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8] shrink-0">
               <div>
                 <h3 className="font-serif text-xl font-bold text-[#3e2723]">Update Kerja</h3>
                 <p className="text-xs text-[#3e2723]/50 mt-0.5">
@@ -304,7 +304,7 @@ export default function AttendanceReportPage() {
                 <X size={22} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto safe-bottom">
               {/* Info singkat */}
               <div className="grid grid-cols-3 gap-3 text-center">
                 {[

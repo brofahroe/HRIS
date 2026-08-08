@@ -439,8 +439,8 @@ export default function DashboardPage() {
       {/* ===== OVERTIME REQUEST MODAL ===== */}
       {showOvertimeForm && (
         <div className="fixed inset-0 bg-[#3e2723]/70 z-[100] flex items-center justify-center p-4">
-          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden">
-            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8]">
+          <div className="bg-white rounded-[2rem] w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-[#e8e0d8] shrink-0">
               <div>
                 <h3 className="font-serif text-xl font-bold text-[#3e2723]">Permohonan Lembur</h3>
                 <p className="text-xs text-[#3e2723]/50 mt-0.5">{offDayLabel} — {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
@@ -449,7 +449,7 @@ export default function DashboardPage() {
                 <X size={22} />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800 leading-relaxed">
                 Hari ini adalah hari libur. Untuk bekerja, ajukan permohonan lembur. Jam lembur akan dihitung <strong>2× jam kerja aktual</strong> setelah disetujui admin.
               </div>
@@ -465,13 +465,15 @@ export default function DashboardPage() {
                 />
                 <p className="text-xs text-[#3e2723]/40">{overtimeReason.length} karakter</p>
               </div>
-              <button
-                onClick={handleOvertimeSubmit}
-                disabled={submittingOvertime || overtimeReason.trim().length < 10}
-                className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
-              >
-                {submittingOvertime ? <><Loader2 size={18} className="animate-spin" /> Mengajukan...</> : 'Ajukan Permohonan'}
-              </button>
+              <div className="safe-bottom">
+                <button
+                  onClick={handleOvertimeSubmit}
+                  disabled={submittingOvertime || overtimeReason.trim().length < 10}
+                  className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:opacity-50 text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
+                >
+                  {submittingOvertime ? <><Loader2 size={18} className="animate-spin" /> Mengajukan...</> : 'Ajukan Permohonan'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -479,26 +481,26 @@ export default function DashboardPage() {
 
       {/* ===== CAMERA / FORM MODAL ===== */}
       {showCamera && (
-        <div className="fixed inset-0 bg-[#3e2723]/80 z-[100] flex flex-col items-center justify-center p-4">
-          <button onClick={closeCamera} className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors">
+        <div className="fixed inset-0 bg-[#3e2723]/80 z-[100] flex flex-col items-center justify-center p-4 safe-bottom">
+          <button onClick={closeCamera} className="absolute top-4 right-4 sm:top-6 sm:right-6 p-2 bg-white/20 hover:bg-white/30 text-white rounded-full transition-colors z-10">
             <X size={24} />
           </button>
-          <div className="w-full max-w-md bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col">
+          <div className="w-full max-w-md bg-white rounded-[2rem] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
             {modalStep === 'camera' && (
               <>
-                <div className="p-4 text-center border-b border-[#e8e0d8]">
+                <div className="p-4 text-center border-b border-[#e8e0d8] shrink-0">
                   <h3 className="font-bold text-[#3e2723]">{cameraMode === 'in' ? 'Selfie Check-In' : 'Selfie Check-Out'}</h3>
                   {cameraMode === 'in' && isOffDay && (
                     <p className="text-xs text-purple-600 font-semibold mt-0.5">Mode Lembur — {offDayLabel}</p>
                   )}
                   <p className="text-xs text-[#3e2723]/50 mt-0.5">Pastikan wajah terlihat jelas</p>
                 </div>
-                <div className="relative bg-[#3e2723] aspect-[3/4] w-full overflow-hidden">
+                <div className="relative bg-[#3e2723] w-full overflow-hidden shrink-0 max-h-[55vh] sm:aspect-[3/4]">
                   {!photoData
                     ? <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
                     : <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />}
                 </div>
-                <div className="p-6 bg-white flex flex-col gap-3">
+                <div className="p-4 sm:p-6 bg-white flex flex-col gap-3 safe-bottom">
                   {!photoData ? (
                     <button onClick={capturePhoto} className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)]">
                       <Camera size={20} /> Ambil Foto
@@ -530,7 +532,7 @@ export default function DashboardPage() {
                     <button onClick={() => setModalStep('camera')} className="text-xs text-[#c04838] hover:underline mt-0.5">Ganti foto</button>
                   </div>
                 </div>
-                <div className="p-6 flex flex-col gap-4">
+                <div className="p-4 sm:p-6 flex flex-col gap-4 safe-bottom">
                   <textarea value={workUpdate} onChange={e => setWorkUpdate(e.target.value)}
                     placeholder="Contoh: Menyelesaikan motif batik parang untuk pesanan 50 pcs..."
                     rows={5}

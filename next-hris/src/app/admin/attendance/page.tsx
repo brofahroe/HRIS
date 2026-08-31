@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Search, ChevronUp, ChevronDown, ChevronsUpDown, ClipboardList, X } from "lucide-react";
+import { Search, ChevronUp, ChevronDown, ChevronsUpDown, ClipboardList, X, Download } from "lucide-react";
+import { getAccessToken } from "@/lib/authClient";
 
 type SortKey = "full_name" | "date" | "check_in_time" | "check_out_time" | "status";
 type SortDir = "asc" | "desc";
@@ -101,6 +102,51 @@ export default function AttendanceReportPage() {
   const fmtDate = (str: string) =>
     new Date(str).toLocaleDateString("id-ID", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
 
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    setExporting(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        alert("Sesi berakhir. Silakan login ulang.");
+        setExporting(false);
+        return;
+      }
+
+      const params = new URLSearchParams();
+      params.set("month", String(filterMonth));
+      params.set("year", String(filterYear));
+      if (filterStatus !== "Semua") params.set("status", filterStatus);
+      if (search.trim()) params.set("search", search.trim());
+
+      const res = await fetch(`/api/attendance/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error || "Gagal mengekspor data.");
+        setExporting(false);
+        return;
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `laporan-absensi-${filterYear}-${String(filterMonth).padStart(2, "0")}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      alert("Terjadi kesalahan saat mengekspor.");
+    } finally {
+      setExporting(false);
+    }
+  };
+
   const selectCls = "px-3 py-2 border border-[#e8e0d8] rounded-xl outline-none focus:border-[#c04838] text-[#3e2723] text-sm bg-white transition-all";
 
   return (
@@ -149,6 +195,16 @@ export default function AttendanceReportPage() {
           <option value="Izin">Izin</option>
           <option value="Sakit">Sakit</option>
         </select>
+
+        {/* Export CSV */}
+        <button
+          onClick={handleExportCSV}
+          disabled={exporting}
+          className="bg-[#c04838] hover:bg-[#a33d2e] disabled:bg-[#c04838]/60 text-white px-4 py-2 rounded-xl text-xs font-semibold transition-colors flex items-center gap-2"
+        >
+          <Download size={14} />
+          {exporting ? "Mengekspor..." : "Export CSV"}
+        </button>
       </div>
 
       {/* Summary Cards */}

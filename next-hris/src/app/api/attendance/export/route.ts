@@ -56,7 +56,11 @@ export async function GET(request: Request) {
 
     const fmtTime = (iso: string | null) => {
       if (!iso) return "";
-      return new Date(iso).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" });
+      const d = new Date(iso);
+      d.setTime(d.getTime() + 7 * 60 * 60 * 1000);
+      const h = String(d.getUTCHours()).padStart(2, "0");
+      const m = String(d.getUTCMinutes()).padStart(2, "0");
+      return `${h}:${m} WIB`;
     };
     const fmtDate = (str: string) =>
       new Date(str).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });

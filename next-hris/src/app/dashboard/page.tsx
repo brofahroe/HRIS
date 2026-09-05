@@ -8,6 +8,8 @@ import { getAccessToken } from "@/lib/authClient";
 import { getWIBDate } from "@/lib/wib";
 import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2 } from "lucide-react";
 import ForceChangePassword from "@/app/components/ForceChangePassword";
+import NotificationBanner from "@/app/components/NotificationBanner";
+import { getAttendanceNotification, WIB_NOW } from "@/lib/attendanceNotifications";
 
 type ModalStep = 'camera' | 'form';
 type OvertimeStatus = 'idle' | 'pending' | 'approved' | 'rejected';
@@ -42,6 +44,30 @@ export default function DashboardPage() {
   const [workUpdate, setWorkUpdate] = useState('');
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
+
+  const [notification, setNotification] = useState<any>(null);
+
+  useEffect(() => {
+    const checkNotification = () => {
+      if (loading) return;
+
+      const dismissedKey = `att-notif-dismissed-${notification?.type || 'any'}`;
+      const dismissed = localStorage.getItem(dismissedKey);
+      if (dismissed) return;
+
+      const notif = getAttendanceNotification(
+        WIB_NOW(),
+        isOffDay,
+        todayAttendance ? { check_in_time: todayAttendance.check_in_time } : null
+      );
+      setNotification(notif);
+    };
+
+    checkNotification();
+
+    const interval = setInterval(checkNotification, 60000);
+    return () => clearInterval(interval);
+  }, [loading, isOffDay, todayAttendance]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -279,6 +305,17 @@ export default function DashboardPage() {
       </header>
 
       <main className="max-w-2xl mx-auto p-4 md:p-6 space-y-5">
+
+        {/* Attendance Notification Banner */}
+        {notification && (
+          <NotificationBanner
+            notification={notification}
+            onDismiss={() => {
+              localStorage.setItem(`att-notif-dismissed-${notification.type}`, "1");
+              setNotification(null);
+            }}
+          />
+        )}
 
         {/* Banner Hari Libur/Minggu */}
         {isOffDay && (

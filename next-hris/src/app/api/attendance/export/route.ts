@@ -19,8 +19,34 @@ export async function GET(request: Request) {
     const url = new URL(request.url);
     const month = url.searchParams.get("month");
     const year = url.searchParams.get("year");
+    const startDateParam = url.searchParams.get("startDate");
+    const endDateParam = url.searchParams.get("endDate");
     const status = url.searchParams.get("status");
     const search = url.searchParams.get("search")?.trim() || "";
+
+    let startDate: string | null = null;
+    let endDate: string | null = null;
+    if (startDateParam || endDateParam) {
+      const isValidDate = (value: string | null) => {
+        if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+        const date = new Date(`${value}T00:00:00Z`);
+        return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+      };
+      if (!isValidDate(startDateParam) || !isValidDate(endDateParam) || startDateParam! > endDateParam!) {
+        return NextResponse.json({ error: "Rentang tanggal tidak valid." }, { status: 400 });
+      }
+      startDate = startDateParam;
+      endDate = endDateParam;
+    } else if (month) {
+      const m = Number(month);
+      const y = year ? Number(year) : new Date().getFullYear();
+      if (!Number.isInteger(m) || m < 1 || m > 12 || !Number.isInteger(y) || y < 1 || y > 9999) {
+        return NextResponse.json({ error: "Bulan atau tahun tidak valid." }, { status: 400 });
+      }
+      startDate = `${y}-${String(m).padStart(2, "0")}-01`;
+      const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      endDate = end;
+    }
 
     let query = supabaseAdmin
       .from("attendance")
@@ -28,13 +54,8 @@ export async function GET(request: Request) {
       .order("date", { ascending: false })
       .limit(10000);
 
-    if (month) {
-      const m = Number(month);
-      const y = year ? Number(year) : new Date().getFullYear();
-      const start = `${y}-${String(m).padStart(2, "0")}-01`;
-      const endDate = new Date(y, m, 0);
-      const end = `${y}-${String(m).padStart(2, "0")}-${String(endDate.getDate()).padStart(2, "0")}`;
-      query = query.gte("date", start).lte("date", end);
+    if (startDate && endDate) {
+      query = query.gte("date", startDate).lte("date", endDate);
     }
 
     if (status && status !== "Semua") {
@@ -107,7 +128,7 @@ export async function GET(request: Request) {
     return new NextResponse(csv, {
       headers: {
         "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="laporan-absensi${year ? `-${year}` : ""}${month ? `-${String(month).padStart(2, "0")}` : ""}.csv"`,
+        "Content-Disposition": `attachment; filename="laporan-absensi${startDate ? `-${startDate}-sampai-${endDate}` : ""}.csv"`,
       },
     });
   } catch (error: any) {

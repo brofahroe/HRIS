@@ -8,6 +8,22 @@ import { getAccessToken } from "@/lib/authClient";
 type SortKey = "full_name" | "date" | "check_in_time" | "check_out_time" | "status";
 type SortDir = "asc" | "desc";
 
+function getAttendancePeriod(month: number, year: number) {
+  const start = new Date(Date.UTC(year, month - 2, 26));
+  const end = new Date(Date.UTC(year, month - 1, 25));
+  const toDateString = (date: Date) => date.toISOString().slice(0, 10);
+  return { startDate: toDateString(start), endDate: toDateString(end) };
+}
+
+function formatPeriodDate(date: string) {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
 function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; sortDir: SortDir }) {
   if (col !== sortKey) return <ChevronsUpDown size={12} className="opacity-30 ml-1 inline" />;
   return sortDir === "asc"
@@ -24,6 +40,11 @@ export default function AttendanceReportPage() {
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth() + 1);
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [filterStatus, setFilterStatus] = useState("Semua");
+  const attendancePeriod = useMemo(
+    () => getAttendancePeriod(filterMonth, filterYear),
+    [filterMonth, filterYear]
+  );
+  const periodLabel = `${formatPeriodDate(attendancePeriod.startDate)} - ${formatPeriodDate(attendancePeriod.endDate)}`;
 
   // Sort state
   const [sortKey, setSortKey] = useState<SortKey>("date");
@@ -58,10 +79,9 @@ export default function AttendanceReportPage() {
   const filtered = useMemo(() => {
     let result = records;
 
-    // Filter bulan & tahun
+    // Periode absensi berjalan dari tanggal 26 bulan sebelumnya hingga tanggal 25.
     result = result.filter(r => {
-      const d = new Date(r.date);
-      return d.getMonth() + 1 === filterMonth && d.getFullYear() === filterYear;
+      return r.date >= attendancePeriod.startDate && r.date <= attendancePeriod.endDate;
     });
 
     // Filter status
@@ -85,7 +105,7 @@ export default function AttendanceReportPage() {
       if (va > vb) return sortDir === "asc" ? 1 : -1;
       return 0;
     });
-  }, [records, filterMonth, filterYear, filterStatus, search, sortKey, sortDir]);
+  }, [records, attendancePeriod, filterStatus, search, sortKey, sortDir]);
 
   // Summary stats untuk bulan terpilih
   const summary = useMemo(() => {
@@ -115,7 +135,8 @@ export default function AttendanceReportPage() {
       }
 
       const params = new URLSearchParams();
-      params.set("month", String(filterMonth));
+      params.set("startDate", attendancePeriod.startDate);
+      params.set("endDate", attendancePeriod.endDate);
       params.set("year", String(filterYear));
       if (filterStatus !== "Semua") params.set("status", filterStatus);
       if (search.trim()) params.set("search", search.trim());
@@ -135,7 +156,7 @@ export default function AttendanceReportPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `laporan-absensi-${filterYear}-${String(filterMonth).padStart(2, "0")}.csv`;
+      a.download = `laporan-absensi-${attendancePeriod.startDate}-sampai-${attendancePeriod.endDate}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -183,8 +204,12 @@ export default function AttendanceReportPage() {
 
         {/* Tahun */}
         <select value={filterYear} onChange={e => setFilterYear(Number(e.target.value))} className={selectCls}>
-          {[2026, 2025, 2024].map(y => <option key={y} value={y}>{y}</option>)}
+          {Array.from({ length: 7 }, (_, i) => new Date().getFullYear() - i).map(y => <option key={y} value={y}>{y}</option>)}
         </select>
+
+        <span className="text-sm text-[#3e2723]/60 whitespace-nowrap">
+          Periode: <span className="font-semibold text-[#3e2723]">{periodLabel}</span>
+        </span>
 
         {/* Status */}
         <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className={selectCls}>

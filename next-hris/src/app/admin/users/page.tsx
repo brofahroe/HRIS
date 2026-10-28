@@ -21,6 +21,7 @@ function SortIcon({ col, sortKey, sortDir }: { col: SortKey; sortKey: SortKey; s
 export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [createMode, setCreateMode] = useState(false);
@@ -36,9 +37,19 @@ export default function UsersPage() {
 
   async function fetchUsers() {
     setLoading(true);
-    const { data } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-    if (data) setUsers(data);
-    setLoading(false);
+    setFetchError(null);
+    try {
+      const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+      if (error) {
+        setFetchError(`Gagal memuat data karyawan: ${error.message}`);
+        return;
+      }
+      setUsers(data ?? []);
+    } catch (error) {
+      setFetchError(`Gagal memuat data karyawan: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => { fetchUsers(); }, []);
@@ -178,6 +189,15 @@ export default function UsersPage() {
             <tbody className="divide-y divide-[#f0ebe4]">
               {loading ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-[#3e2723]/40">Memuat data...</td></tr>
+              ) : fetchError ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-10 text-center text-red-700">
+                    <p>{fetchError}</p>
+                    <button type="button" onClick={fetchUsers} className="mt-2 font-semibold underline">
+                      Coba lagi
+                    </button>
+                  </td>
+                </tr>
               ) : sortedUsers.length === 0 ? (
                 <tr><td colSpan={6} className="px-6 py-10 text-center text-[#3e2723]/40">Belum ada data karyawan.</td></tr>
               ) : (
@@ -258,6 +278,14 @@ export default function UsersPage() {
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Divisi</label>
                   <input type="text" value={editingUser.division || ''} onChange={e => setEditingUser({ ...editingUser, division: e.target.value })} className={inputCls} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Gaji Harian (Rp)</label>
+                  <input type="number" min="0" step="0.01" value={editingUser.daily_salary ?? ''} onChange={e => setEditingUser({ ...editingUser, daily_salary: e.target.value })} className={inputCls} />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Gaji Bulanan (Rp)</label>
+                  <input type="number" min="0" step="0.01" value={editingUser.monthly_salary ?? ''} onChange={e => setEditingUser({ ...editingUser, monthly_salary: e.target.value })} className={inputCls} />
                 </div>
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Hak Akses</label>

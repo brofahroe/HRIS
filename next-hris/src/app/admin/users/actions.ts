@@ -31,11 +31,14 @@ export async function createUser(token: string, formData: FormData) {
     const position = (formData.get('position') as string || '').trim();
     const division = (formData.get('division') as string || '').trim();
     const role = formData.get('role') as string || 'Employee';
-    const dailySalary = parseFloat(formData.get('daily_salary') as string) || 0;
-    const monthlySalary = parseFloat(formData.get('monthly_salary') as string) || 0;
+    const dailySalary = Number(formData.get('daily_salary') || 0);
+    const monthlySalary = Number(formData.get('monthly_salary') || 0);
 
     if (!email || !nik || !fullName) {
       return { success: false, error: "Email, NIK, dan Nama Lengkap wajib diisi." };
+    }
+    if (!Number.isFinite(dailySalary) || dailySalary < 0 || !Number.isFinite(monthlySalary) || monthlySalary < 0) {
+      return { success: false, error: "Gaji harian dan bulanan harus berupa angka nol atau lebih." };
     }
 
     // Password default berdasarkan role — user wajib ganti saat login pertama
@@ -81,6 +84,12 @@ export async function updateUser(token: string, userId: string, data: any) {
   try {
     await assertAdmin(token);
 
+    const dailySalary = Number(data.daily_salary || 0);
+    const monthlySalary = Number(data.monthly_salary || 0);
+    if (!Number.isFinite(dailySalary) || dailySalary < 0 || !Number.isFinite(monthlySalary) || monthlySalary < 0) {
+      return { success: false, error: "Gaji harian dan bulanan harus berupa angka nol atau lebih." };
+    }
+
     const { error } = await supabase
       .from('users')
       .update({
@@ -89,7 +98,9 @@ export async function updateUser(token: string, userId: string, data: any) {
         position: data.position,
         division: data.division,
         role: data.role,
-        is_active: data.is_active
+        is_active: data.is_active,
+        daily_salary: dailySalary,
+        monthly_salary: monthlySalary
       })
       .eq('id', userId);
 
@@ -127,18 +138,22 @@ export async function deleteUser(token: string, userId: string, authId: string) 
   try {
     await assertAdmin(token);
 
-    // 1. Hapus dari public.users
+    // Delete Auth first: the schema cascades this deletion to public.users.
+    if (authId) {
+      const { error: authError } = await supabase.auth.admin.deleteUser(authId);
+      if (authError) throw authError;
+    }
+
+    // Ensure the profile is removed even if the Auth-to-profile cascade is absent.
     const { error: dbError } = await supabase
       .from('users')
       .delete()
       .eq('id', userId);
 
-    if (dbError) throw dbError;
-
-    // 2. Hapus dari auth.users jika auth_id ada
-    if (authId) {
-      const { error: authError } = await supabase.auth.admin.deleteUser(authId);
-      if (authError) throw authError;
+    if (dbError) {
+      throw new Error(authId
+        ? `Akun Auth berhasil dihapus, tetapi profil karyawan gagal dibersihkan: ${dbError.message}`
+        : dbError.message);
     }
 
     revalidatePath('/admin/users');

@@ -105,7 +105,14 @@ export default function PayrollPage() {
                     <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.base_salary)}</td>
                     <td className="px-6 py-4 text-right text-[#3e2723]/70 text-sm">{formatRupiah(p.total_allowance)}</td>
                     <td className="px-6 py-4 text-right text-purple-600 text-sm">{p.overtime_pay > 0 ? `+${formatRupiah(p.overtime_pay)}` : '–'}</td>
-                    <td className="px-6 py-4 text-right text-[#c04838] text-sm">-{formatRupiah(p.late_deductions)}</td>
+                    <td className="px-6 py-4 text-right text-[#c04838] text-sm">
+                      <div>-{formatRupiah(p.late_deductions)}</div>
+                      {p.cash_advance_deduction > 0 && (
+                        <div className="text-[11px] text-[#3e2723]/50 mt-0.5">
+                          (Kasbon: {formatRupiah(p.cash_advance_deduction)})
+                        </div>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-right font-bold text-[#3e2723]">{formatRupiah(p.net_salary)}</td>
                   </tr>
                 ))}

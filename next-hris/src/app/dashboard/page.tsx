@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -6,7 +6,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import { getAccessToken } from "@/lib/authClient";
 import { getWIBDate } from "@/lib/wib";
-import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2 } from "lucide-react";
+import { LogOut, MapPin, Clock, Camera, CheckCircle, X, ClipboardList, AlertTriangle, Loader2, Wallet } from "lucide-react";
 import ForceChangePassword from "@/app/components/ForceChangePassword";
 import NotificationBanner from "@/app/components/NotificationBanner";
 import { getAttendanceNotification, WIB_NOW } from "@/lib/attendanceNotifications";
@@ -405,8 +405,8 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Face ID Banner */}
-          <div className="mt-6 w-full max-w-sm">
+          {/* Face ID & Menu Cepat */}
+          <div className="mt-6 w-full max-w-sm space-y-2.5">
             {!profile?.face_descriptor ? (
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl">
                 <p className="text-sm text-amber-800 mb-3 text-center">Anda belum mendaftarkan wajah (Face ID). Wajib didaftarkan untuk absen.</p>
@@ -419,6 +419,25 @@ export default function DashboardPage() {
                 Perbarui Data Wajah (Face ID)
               </Link>
             )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+              <Link
+                href="/employee/kasbon"
+                className="flex items-center justify-center gap-2 py-3 px-4 bg-[#faf8f5] hover:bg-red-50 text-[#3e2723] hover:text-[#c04838] rounded-xl font-semibold transition-all border border-[#e8e0d8] text-sm"
+              >
+                <Wallet size={16} className="text-[#c04838]" />
+                Ajukan Kasbon
+              </Link>
+              {profile?.role === "Supervisor" && (
+                <Link
+                  href="/supervisor/kasbon"
+                  className="flex items-center justify-center gap-2 py-3 px-4 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-xl font-semibold transition-all border border-amber-200 text-sm"
+                >
+                  <CheckCircle size={16} className="text-amber-600" />
+                  Approval Kasbon
+                </Link>
+              )}
+            </div>
           </div>
         </div>
 

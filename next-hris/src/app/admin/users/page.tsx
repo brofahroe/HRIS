@@ -87,7 +87,7 @@ export default function UsersPage() {
     `px-6 py-3 cursor-pointer select-none hover:text-[#c04838] transition-colors whitespace-nowrap ${sortKey === key ? 'text-[#c04838]' : ''}`;
 
   const handleAddClick = () => {
-    setEditingUser({ full_name: '', email: '', nik: '', position: '', division: '', role: 'Employee', is_active: true, daily_salary: '', monthly_salary: '' });
+    setEditingUser({ full_name: '', email: '', nik: '', position: '', division: '', role: 'Employee', supervisor_id: '', is_active: true, daily_salary: '', monthly_salary: '' });
     setNewPassword('');
     setCreateMode(true);
     setIsModalOpen(true);
@@ -213,7 +213,13 @@ export default function UsersPage() {
                       <div className="text-xs text-[#3e2723]/50">{u.division}</div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${u.role === 'Admin' ? 'bg-red-50 text-[#c04838]' : 'bg-[#faf8f5] text-[#3e2723]/60'}`}>
+                      <span className={`px-2 py-1 rounded-lg text-xs font-semibold ${
+                        u.role === 'Admin'
+                          ? 'bg-red-50 text-[#c04838]'
+                          : u.role === 'Supervisor'
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'bg-[#faf8f5] text-[#3e2723]/60'
+                      }`}>
                         {u.role}
                       </span>
                     </td>
@@ -291,6 +297,7 @@ export default function UsersPage() {
                   <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Hak Akses</label>
                   <select value={editingUser.role} onChange={e => setEditingUser({ ...editingUser, role: e.target.value })} className={inputCls}>
                     <option value="Employee">Karyawan Biasa</option>
+                    <option value="Supervisor">Supervisor</option>
                     <option value="Admin">Admin Pusat</option>
                   </select>
                 </div>
@@ -299,6 +306,23 @@ export default function UsersPage() {
                   <select value={editingUser.is_active ? "true" : "false"} onChange={e => setEditingUser({ ...editingUser, is_active: e.target.value === "true" })} className={inputCls}>
                     <option value="true">Aktif</option>
                     <option value="false">Nonaktif (Resign)</option>
+                  </select>
+                </div>
+                <div className="col-span-2 space-y-1.5">
+                  <label className="text-xs font-semibold text-[#3e2723] uppercase tracking-wide">Supervisor / Atasan (Untuk Approval Kasbon)</label>
+                  <select
+                    value={editingUser.supervisor_id || ''}
+                    onChange={e => setEditingUser({ ...editingUser, supervisor_id: e.target.value || null })}
+                    className={inputCls}
+                  >
+                    <option value="">— Tanpa Supervisor (Langsung ke Admin) —</option>
+                    {users
+                      .filter(u => u.is_active && (u.role === 'Supervisor' || u.role === 'Admin') && u.id !== editingUser.id)
+                      .map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.full_name} ({s.role})
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>

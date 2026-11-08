@@ -9,8 +9,8 @@ const CHECK_OUT_REMINDER_AFTER = 15 * 60 + 30; // 15:30 WIB
 
 export async function POST(request: Request) {
   try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
     if (!supabaseUrl || !supabaseServiceKey) {
       return NextResponse.json({ error: "Konfigurasi server tidak lengkap." }, { status: 500 });
     }
@@ -39,7 +39,7 @@ export async function POST(request: Request) {
       .from("users")
       .select("id, full_name, email, nik")
       .eq("is_active", true)
-      .in("role", ["Karyawan", "Supervisor"]);
+      .in("role", ["Employee", "Supervisor"]);
 
     if (usersError) throw usersError;
 

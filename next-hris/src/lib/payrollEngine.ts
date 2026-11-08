@@ -1,12 +1,12 @@
-﻿import { createClient } from "@supabase/supabase-js";
+import { createClient } from "@supabase/supabase-js";
 
 /**
  * Mesin Penggajian (Payroll Engine)
  * Menggabungkan data absen selama 1 bulan dan menghitung gaji karyawan.
  */
 export async function generateMonthlyPayroll(month: number, year: number) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || '';
   const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
   try {
@@ -60,6 +60,22 @@ export async function generateMonthlyPayroll(month: number, year: number) {
       // Potongan Terlambat (Potong 50.000 per hari terlambat)
       const latePenalty = lateDays * 50000;
 
+      // Ambil kasbon yang sudah di-approve final (admin_status = 'approved') di bulan ini
+      let cashAdvanceDeduction = 0;
+      const { data: cashAdvances } = await supabaseAdmin
+        .from('cash_advances')
+        .select('amount')
+        .eq('user_id', user.id)
+        .eq('admin_status', 'approved')
+        .gte('date', startDate)
+        .lte('date', endDate);
+
+      if (cashAdvances) {
+        cashAdvances.forEach(ca => {
+          cashAdvanceDeduction += Number(ca.amount) || 0;
+        });
+      }
+
       // Upah lembur: jam lembur × tarif per jam
       // Tarif per jam = (gaji harian / 8) — atau (gaji bulanan / 26 / 8) jika pakai monthly
       const dailyRate = Number(user.daily_salary) || (Number(user.monthly_salary) / 26);
@@ -67,7 +83,7 @@ export async function generateMonthlyPayroll(month: number, year: number) {
       const overtimePay = Math.round(overtimeHours * hourlyRate);
       
       const totalIncome = baseSalary + allowance + childAllowance + overtimePay;
-      const totalDeductions = latePenalty;
+      const totalDeductions = latePenalty + cashAdvanceDeduction;
       const netSalary = totalIncome - totalDeductions;
 
       payrollResults.push({
@@ -83,17 +99,30 @@ export async function generateMonthlyPayroll(month: number, year: number) {
         base_salary: baseSalary,
         total_allowance: allowance + childAllowance,
         late_deductions: totalDeductions,
+        cash_advance_deduction: cashAdvanceDeduction,
         net_salary: netSalary,
         status: 'Pending'
       });
     }
 
     // 3. Simpan hasil payroll ke database (tabel 'payroll')
-    const { error: insertError } = await supabaseAdmin
+    let { error: insertError } = await supabaseAdmin
       .from('payroll')
       .upsert(payrollResults as any[], {
         onConflict: 'user_id,month,year'
       });
+
+    // Fallback jika kolom baru (cash_advance_deduction) belum dimigrasi di DB
+    if (insertError && insertError.message?.includes('cash_advance_deduction')) {
+      const legacyResults = payrollResults.map(({ cash_advance_deduction, ...rest }) => rest);
+      const retry = await supabaseAdmin
+        .from('payroll')
+        .upsert(legacyResults as any[], {
+          onConflict: 'user_id,month,year'
+        });
+      insertError = retry.error;
+    }
+
     if (insertError) throw insertError;
 
     return {

@@ -83,8 +83,13 @@ export async function GET(request: Request) {
       const m = String(d.getUTCMinutes()).padStart(2, "0");
       return `${h}:${m} WIB`;
     };
-    const fmtDate = (str: string) =>
-      new Date(str).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+    const fmtDate = (str: string) => {
+      const d = new Date(str);
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const yy = String(d.getUTCFullYear()).slice(-2);
+      return `${dd}-${mm}-${yy}`;
+    };
 
     const escapeCsv = (val: any) => {
       if (val === null || val === undefined) return "";

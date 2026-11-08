@@ -4,7 +4,7 @@ import { ReactNode, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
-import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer, Menu, X } from "lucide-react";
+import { Users, FileText, Settings, LayoutDashboard, LogOut, CalendarDays, Timer, Wallet, Menu, X } from "lucide-react";
 import ForceChangePassword from "@/app/components/ForceChangePassword";
 
 const navItems = [
@@ -12,6 +12,7 @@ const navItems = [
   { href: "/admin/users", label: "Data Karyawan", icon: Users },
   { href: "/admin/attendance", label: "Laporan Absensi", icon: CalendarDays },
   { href: "/admin/overtime", label: "Permohonan Lembur", icon: Timer },
+  { href: "/admin/kasbon", label: "Pengajuan Kasbon", icon: Wallet },
   { href: "/admin/payroll", label: "Payroll", icon: FileText },
   { href: "/admin/settings", label: "Pengaturan", icon: Settings },
 ];
@@ -21,6 +22,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const [authorized, setAuthorized] = useState(false);
   const [pendingOvertime, setPendingOvertime] = useState(0);
+  const [pendingKasbon, setPendingKasbon] = useState(0);
   const [adminProfile, setAdminProfile] = useState<any>(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
@@ -51,6 +53,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           .select('*', { count: 'exact', head: true })
           .eq('status', 'pending');
         setPendingOvertime(count || 0);
+        const { count: kasbonCount } = await supabase
+          .from('cash_advances')
+          .select('*', { count: 'exact', head: true })
+          .eq('admin_status', 'pending');
+        setPendingKasbon(kasbonCount || 0);
       } else {
         router.push('/dashboard');
       }
@@ -86,6 +93,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
             {href === "/admin/overtime" && pendingOvertime > 0 && (
               <span className="ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 leading-none">
                 {pendingOvertime}
+              </span>
+            )}
+            {href === "/admin/kasbon" && pendingKasbon > 0 && (
+              <span className="ml-auto px-1.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 leading-none">
+                {pendingKasbon}
               </span>
             )}
           </Link>

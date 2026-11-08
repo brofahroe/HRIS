@@ -7,6 +7,7 @@
 DO $$ BEGIN
   CREATE TYPE user_role AS ENUM ('Admin', 'Employee');
 EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'Supervisor';
 
 DO $$ BEGIN
   CREATE TYPE attendance_status AS ENUM ('Hadir', 'Terlambat', 'Izin', 'Sakit', 'Cuti', 'Alpa');
@@ -33,6 +34,7 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
 );
 ALTER TABLE users ADD COLUMN IF NOT EXISTS must_change_password BOOLEAN DEFAULT FALSE;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS supervisor_id UUID REFERENCES users(id) ON DELETE SET NULL;
 
 -- 3. Table: shifts
 CREATE TABLE IF NOT EXISTS shifts (
@@ -108,12 +110,30 @@ CREATE TABLE IF NOT EXISTS payroll (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()),
   UNIQUE(user_id, month, year)
 );
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS overtime_hours NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS overtime_pay NUMERIC(15, 2) DEFAULT 0;
+ALTER TABLE payroll ADD COLUMN IF NOT EXISTS cash_advance_deduction NUMERIC(15, 2) DEFAULT 0;
+
+-- 5b. Table: cash_advances
+CREATE TABLE IF NOT EXISTS cash_advances (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  user_id UUID REFERENCES users(id) ON DELETE CASCADE NOT NULL,
+  date DATE NOT NULL,
+  amount NUMERIC(15, 2) NOT NULL,
+  reason TEXT NOT NULL,
+  supervisor_status VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
+  admin_status VARCHAR(20) DEFAULT 'pending', -- pending | approved | rejected
+  supervisor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  admin_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+);
 
 -- 6. Row Level Security (idempoten: no-op bila sudah aktif)
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE attendance ENABLE ROW LEVEL SECURITY;
 ALTER TABLE payroll ENABLE ROW LEVEL SECURITY;
 ALTER TABLE overtime_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE cash_advances ENABLE ROW LEVEL SECURITY;
 
 -- 6b. Unik per akun auth (dibutuhkan agar lookup role auth_id -> role pasti 1 baris)
 DO $$ BEGIN
@@ -141,6 +161,14 @@ $$;
 REVOKE ALL ON FUNCTION public.current_user_role() FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.current_user_role() TO authenticated, anon;
 
+CREATE OR REPLACE FUNCTION public.current_user_id()
+RETURNS UUID LANGUAGE sql STABLE SECURITY DEFINER
+AS $$
+  SELECT id FROM public.users WHERE auth_id = auth.uid();
+$$;
+REVOKE ALL ON FUNCTION public.current_user_id() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.current_user_id() TO authenticated, anon;
+
 -- 8. Policies.
 --    Kebijakan "view all" admin memakai current_user_role() (bukan sub-query ke
 --    tabel users itu sendiri) agar tidak rekursi. Policy yang sudah ada lewat
@@ -156,6 +184,10 @@ BEGIN
   DROP POLICY IF EXISTS "Admins can view all profiles" ON users;
   CREATE POLICY "Admins can view all profiles"
   ON users FOR SELECT USING (public.current_user_role() = 'Admin');
+
+  DROP POLICY IF EXISTS "Supervisors can view subordinate profiles" ON users;
+  CREATE POLICY "Supervisors can view subordinate profiles"
+  ON users FOR SELECT USING (public.current_user_role() = 'Supervisor');
 
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Employees can view own attendance') THEN
     CREATE POLICY "Employees can view own attendance"
@@ -183,4 +215,33 @@ BEGIN
   DROP POLICY IF EXISTS "Admins can view all overtime" ON overtime_requests;
   CREATE POLICY "Admins can view all overtime"
   ON overtime_requests FOR SELECT USING (public.current_user_role() = 'Admin');
+
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = 'Employees can view own cash_advances') THEN
+    CREATE POLICY "Employees can view own cash_advances"
+    ON cash_advances FOR SELECT USING (user_id = public.current_user_id());
+  END IF;
+
+  DROP POLICY IF EXISTS "Employees can insert own cash_advances" ON cash_advances;
+  CREATE POLICY "Employees can insert own cash_advances"
+  ON cash_advances FOR INSERT WITH CHECK (user_id = public.current_user_id());
+
+  DROP POLICY IF EXISTS "Supervisors can view assigned cash_advances" ON cash_advances;
+  CREATE POLICY "Supervisors can view assigned cash_advances"
+  ON cash_advances FOR SELECT USING (
+    public.current_user_role() = 'Supervisor' AND (supervisor_id = public.current_user_id() OR supervisor_id IS NULL)
+  );
+
+  DROP POLICY IF EXISTS "Supervisors can update assigned cash_advances" ON cash_advances;
+  CREATE POLICY "Supervisors can update assigned cash_advances"
+  ON cash_advances FOR UPDATE USING (
+    public.current_user_role() = 'Supervisor' AND (supervisor_id = public.current_user_id() OR supervisor_id IS NULL)
+  );
+
+  DROP POLICY IF EXISTS "Admins can view all cash_advances" ON cash_advances;
+  CREATE POLICY "Admins can view all cash_advances"
+  ON cash_advances FOR SELECT USING (public.current_user_role() = 'Admin');
+
+  DROP POLICY IF EXISTS "Admins can update all cash_advances" ON cash_advances;
+  CREATE POLICY "Admins can update all cash_advances"
+  ON cash_advances FOR UPDATE USING (public.current_user_role() = 'Admin');
 END $$;

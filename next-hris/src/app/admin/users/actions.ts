@@ -1,13 +1,7 @@
 "use server";
 
-import { createClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
-import { getAuthedAdmin } from "@/lib/apiAuth";
-
-// Menggunakan Service Role Key agar Admin bisa bypass RLS saat mengedit/menghapus
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const supabase = createClient(supabaseUrl, supabaseKey);
+import { getAuthedAdmin, getSupabaseAdmin } from "@/lib/apiAuth";
 
 /**
  * Semua Server Action di file ini adalah endpoint jaringan yang bisa dipanggil
@@ -24,13 +18,17 @@ async function assertAdmin(token: string) {
 export async function createUser(token: string, formData: FormData) {
   try {
     await assertAdmin(token);
+    const supabase = getSupabaseAdmin();
 
     const email = (formData.get('email') as string || '').trim();
     const nik = (formData.get('nik') as string || '').trim();
     const fullName = (formData.get('full_name') as string || '').trim();
     const position = (formData.get('position') as string || '').trim();
     const division = (formData.get('division') as string || '').trim();
-    const role = formData.get('role') as string || 'Employee';
+    const rawRole = formData.get('role') as string || 'Employee';
+    const role = ['Admin', 'Supervisor', 'Employee'].includes(rawRole) ? rawRole : 'Employee';
+    const supervisorIdRaw = (formData.get('supervisor_id') as string || '').trim();
+    const supervisorId = supervisorIdRaw && supervisorIdRaw !== 'null' && supervisorIdRaw !== 'undefined' ? supervisorIdRaw : null;
     const dailySalary = Number(formData.get('daily_salary') || 0);
     const monthlySalary = Number(formData.get('monthly_salary') || 0);
 
@@ -60,7 +58,8 @@ export async function createUser(token: string, formData: FormData) {
       full_name: fullName,
       position,
       division,
-      role: role === 'Admin' ? 'Admin' : 'Employee',
+      role,
+      supervisor_id: supervisorId,
       daily_salary: dailySalary,
       monthly_salary: monthlySalary,
       is_active: true,
@@ -83,12 +82,16 @@ export async function createUser(token: string, formData: FormData) {
 export async function updateUser(token: string, userId: string, data: any) {
   try {
     await assertAdmin(token);
+    const supabase = getSupabaseAdmin();
 
     const dailySalary = Number(data.daily_salary || 0);
     const monthlySalary = Number(data.monthly_salary || 0);
     if (!Number.isFinite(dailySalary) || dailySalary < 0 || !Number.isFinite(monthlySalary) || monthlySalary < 0) {
       return { success: false, error: "Gaji harian dan bulanan harus berupa angka nol atau lebih." };
     }
+
+    const role = ['Admin', 'Supervisor', 'Employee'].includes(data.role) ? data.role : 'Employee';
+    const supervisorId = data.supervisor_id && data.supervisor_id !== userId ? data.supervisor_id : null;
 
     const { error } = await supabase
       .from('users')
@@ -97,7 +100,8 @@ export async function updateUser(token: string, userId: string, data: any) {
         nik: data.nik,
         position: data.position,
         division: data.division,
-        role: data.role,
+        role,
+        supervisor_id: supervisorId,
         is_active: data.is_active,
         daily_salary: dailySalary,
         monthly_salary: monthlySalary
@@ -116,6 +120,7 @@ export async function updateUser(token: string, userId: string, data: any) {
 export async function resetPassword(token: string, authId: string, newPassword: string) {
   try {
     await assertAdmin(token);
+    const supabase = getSupabaseAdmin();
 
     if (!authId) return { success: false, error: "Auth ID tidak ditemukan." };
     if (newPassword.length < 6) return { success: false, error: "Password minimal 6 karakter." };
@@ -137,6 +142,7 @@ export async function resetPassword(token: string, authId: string, newPassword: 
 export async function deleteUser(token: string, userId: string, authId: string) {
   try {
     await assertAdmin(token);
+    const supabase = getSupabaseAdmin();
 
     // Delete Auth first: the schema cascades this deletion to public.users.
     if (authId) {

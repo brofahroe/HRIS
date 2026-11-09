@@ -35,8 +35,8 @@ export function getAttendanceNotification(
   if (isOffDay) return null;
 
   const wibHours = now.getUTCHours();
-  const wibMinutes = now.getUTCMinutes;
-  const currentMinutes = wibHours * 60 + wibMinutes();
+  const wibMinutes = now.getUTCMinutes();
+  const currentMinutes = wibHours * 60 + wibMinutes;
 
   // Window 07:30 – 08:30 WIB  → ingatkan check-in
   const checkInStart = 7 * 60 + 30;

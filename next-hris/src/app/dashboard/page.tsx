@@ -51,15 +51,32 @@ export default function DashboardPage() {
     const checkNotification = () => {
       if (loading) return;
 
-      const dismissedKey = `att-notif-dismissed-${notification?.type || 'any'}`;
-      const dismissed = localStorage.getItem(dismissedKey);
-      if (dismissed) return;
-
       const notif = getAttendanceNotification(
         WIB_NOW(),
         isOffDay,
-        todayAttendance ? { check_in_time: todayAttendance.check_in_time } : null
+        todayAttendance
+          ? {
+              check_in_time: todayAttendance.check_in_time,
+              check_out_time: todayAttendance.check_out_time,
+            }
+          : null
       );
+
+      if (!notif) {
+        setNotification(null);
+        return;
+      }
+
+      try {
+        const dismissedKey = `att-notif-dismissed-${getWIBDate()}-${notif.type}`;
+        if (localStorage.getItem(dismissedKey)) {
+          setNotification(null);
+          return;
+        }
+      } catch {
+        // Abaikan jika localStorage tidak tersedia (mis. mode privat Safari / in-app browser)
+      }
+
       setNotification(notif);
     };
 
@@ -311,7 +328,11 @@ export default function DashboardPage() {
           <NotificationBanner
             notification={notification}
             onDismiss={() => {
-              localStorage.setItem(`att-notif-dismissed-${notification.type}`, "1");
+              try {
+                localStorage.setItem(`att-notif-dismissed-${getWIBDate()}-${notification.type}`, "1");
+              } catch {
+                // Abaikan jika localStorage tidak tersedia
+              }
               setNotification(null);
             }}
           />

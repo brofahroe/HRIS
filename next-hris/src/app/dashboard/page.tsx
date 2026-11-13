@@ -39,6 +39,7 @@ export default function DashboardPage() {
   // Camera state
   const [showCamera, setShowCamera] = useState(false);
   const [cameraMode, setCameraMode] = useState<'in' | 'out'>('in');
+  const [cameraReady, setCameraReady] = useState(false);
   const [photoData, setPhotoData] = useState<string | null>(null);
   const [modalStep, setModalStep] = useState<ModalStep>('camera');
   const [workUpdate, setWorkUpdate] = useState('');
@@ -187,14 +188,18 @@ export default function DashboardPage() {
     setCameraMode(mode);
     setShowCamera(true);
     setPhotoData(null);
+    setCameraReady(false);
     setModalStep('camera');
     setWorkUpdate('');
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
       streamRef.current = stream;
-      if (videoRef.current) videoRef.current.srcObject = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.onloadedmetadata = () => setCameraReady(true);
+      }
     } catch {
-      alert("Gagal mengakses kamera.");
+      alert("Gagal mengakses kamera. Pastikan izin kamera telah diberikan.");
       setShowCamera(false);
     }
   };
@@ -202,22 +207,33 @@ export default function DashboardPage() {
   const closeCamera = () => {
     streamRef.current?.getTracks().forEach(t => t.stop());
     setShowCamera(false);
+    setCameraReady(false);
     setPhotoData(null);
     setModalStep('camera');
     setWorkUpdate('');
   };
 
   const capturePhoto = () => {
-    if (!videoRef.current) return;
+    if (!videoRef.current || !cameraReady || videoRef.current.videoWidth === 0 || videoRef.current.videoHeight === 0) {
+      alert("Kamera sedang bersiap. Mohon tunggu sesaat dan tekan kembali.");
+      return;
+    }
     const canvas = document.createElement("canvas");
     const MAX_WIDTH = 600;
-    const scale = Math.min(1, MAX_WIDTH / videoRef.current.videoWidth);
-    canvas.width = videoRef.current.videoWidth * scale;
-    canvas.height = videoRef.current.videoHeight * scale;
+    const vWidth = videoRef.current.videoWidth;
+    const vHeight = videoRef.current.videoHeight;
+    const scale = Math.min(1, MAX_WIDTH / vWidth);
+    canvas.width = vWidth * scale;
+    canvas.height = vHeight * scale;
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      setPhotoData(canvas.toDataURL("image/jpeg", 0.7));
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.75);
+      if (!dataUrl || dataUrl === "data:," || dataUrl.length < 1000) {
+        alert("Gagal mengambil foto. Silakan pastikan gambar terlihat lalu coba lagi.");
+        return;
+      }
+      setPhotoData(dataUrl);
       streamRef.current?.getTracks().forEach(t => t.stop());
     }
   };
@@ -476,7 +492,14 @@ export default function DashboardPage() {
                   <div className="flex justify-between items-start gap-4">
                     <div className="flex items-start gap-3">
                       {att.check_in_photo && (
-                        <img src={att.check_in_photo} alt="Selfie" className="w-11 h-11 rounded-xl object-cover bg-[#faf8f5] shrink-0" />
+                        <img
+                          src={att.check_in_photo}
+                          alt="Selfie"
+                          className="w-11 h-11 rounded-xl object-cover bg-[#faf8f5] shrink-0"
+                          onError={(e) => {
+                            e.currentTarget.style.display = "none";
+                          }}
+                        />
                       )}
                       <div>
                         <p className="font-medium text-[#3e2723] text-sm">
@@ -573,14 +596,44 @@ export default function DashboardPage() {
                   <p className="text-xs text-[#3e2723]/50 mt-0.5">Pastikan wajah terlihat jelas</p>
                 </div>
                 <div className="relative bg-[#3e2723] w-full overflow-hidden shrink-0 max-h-[55vh] sm:aspect-[3/4]">
-                  {!photoData
-                    ? <video ref={videoRef} autoPlay playsInline muted className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
-                    : <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />}
+                  {!photoData ? (
+                    <>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        onLoadedMetadata={() => setCameraReady(true)}
+                        onCanPlay={() => setCameraReady(true)}
+                        className="absolute inset-0 w-full h-full object-cover transform -scale-x-100"
+                      />
+                      {!cameraReady && (
+                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 text-white text-xs gap-2 z-10">
+                          <Loader2 size={24} className="animate-spin text-white" />
+                          <span>Menyiapkan kamera...</span>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <img src={photoData} alt="Captured" className="absolute inset-0 w-full h-full object-cover transform -scale-x-100" />
+                  )}
                 </div>
                 <div className="p-4 sm:p-6 bg-white flex flex-col gap-3 safe-bottom">
                   {!photoData ? (
-                    <button onClick={capturePhoto} className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)]">
-                      <Camera size={20} /> Ambil Foto
+                    <button
+                      onClick={capturePhoto}
+                      disabled={!cameraReady}
+                      className="w-full py-4 bg-[#c04838] hover:bg-[#98382d] disabled:bg-stone-300 disabled:text-stone-500 disabled:cursor-not-allowed text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-[0_8px_20px_rgba(192,72,56,0.25)] transition-all"
+                    >
+                      {!cameraReady ? (
+                        <>
+                          <Loader2 size={20} className="animate-spin" /> Menyiapkan Kamera...
+                        </>
+                      ) : (
+                        <>
+                          <Camera size={20} /> Ambil Foto
+                        </>
+                      )}
                     </button>
                   ) : (
                     <>

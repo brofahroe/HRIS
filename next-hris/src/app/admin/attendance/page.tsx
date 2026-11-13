@@ -4,6 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { Search, ChevronUp, ChevronDown, ChevronsUpDown, ClipboardList, X, Download } from "lucide-react";
 import { getAccessToken } from "@/lib/authClient";
+import AttendanceAvatar from "@/app/components/AttendanceAvatar";
 
 type SortKey = "full_name" | "date" | "check_in_time" | "check_out_time" | "status";
 type SortDir = "asc" | "desc";
@@ -299,13 +300,11 @@ export default function AttendanceReportPage() {
                       {/* Karyawan */}
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          {r.check_in_photo ? (
-                            <img src={r.check_in_photo} alt="" className="w-9 h-9 rounded-lg object-cover bg-[#faf8f5] shrink-0" />
-                          ) : (
-                            <div className="w-9 h-9 rounded-lg bg-red-50 text-[#c04838] flex items-center justify-center font-bold text-sm shrink-0">
-                              {r.users?.full_name?.charAt(0) ?? "?"}
-                            </div>
-                          )}
+                          <AttendanceAvatar
+                            photoUrl={r.check_in_photo}
+                            name={r.users?.full_name}
+                            size="w-9 h-9"
+                          />
                           <div>
                             <div className="font-medium text-[#3e2723] text-sm">{r.users?.full_name ?? "–"}</div>
                             <div className="text-xs text-[#3e2723]/40">{r.users?.nik ?? ""}</div>
@@ -401,7 +400,14 @@ export default function AttendanceReportPage() {
               </div>
               {/* Foto selfie checkout */}
               {selected.check_out_photo && (
-                <img src={selected.check_out_photo} alt="Selfie check-out" className="w-full rounded-2xl object-cover max-h-48" />
+                <img
+                  src={selected.check_out_photo}
+                  alt="Selfie check-out"
+                  className="w-full rounded-2xl object-cover max-h-48"
+                  onError={(e) => {
+                    e.currentTarget.style.display = "none";
+                  }}
+                />
               )}
               {/* Teks update kerja */}
               <div className="bg-[#faf8f5] rounded-2xl p-4 border border-[#e8e0d8]">

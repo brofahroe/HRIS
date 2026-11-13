@@ -1,4 +1,4 @@
-﻿import { NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthedUser, getBearerToken } from "@/lib/apiAuth";
 
@@ -107,21 +107,32 @@ export async function POST(request: Request) {
     }
 
     let photoUrl = null;
-    if (photoBase64) {
+    if (typeof photoBase64 === "string" && photoBase64.startsWith("data:image/")) {
       try {
-        await supabaseAdmin.storage.createBucket('attendance', { public: true });
-        const base64Data = photoBase64.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const fileName = `${userId}_${todayStr}_checkout_${Date.now()}.jpg`;
+        const match = photoBase64.match(/^data:(image\/[a-zA-Z0-9.+_-]+);base64,(.+)$/);
+        if (match) {
+          const contentType = match[1];
+          const base64Data = match[2];
+          const buffer = Buffer.from(base64Data, "base64");
 
-        const { error: uploadError } = await supabaseAdmin
-          .storage
-          .from('attendance')
-          .upload(fileName, buffer, { contentType: 'image/jpeg', upsert: true });
+          // Pastikan buffer valid dan bukan corrupt/kosong (minimal 500 byte)
+          if (buffer.length > 500) {
+            await supabaseAdmin.storage.createBucket("attendance", { public: true });
+            const ext = contentType.includes("png") ? "png" : "jpg";
+            const fileName = `${userId}_${todayStr}_checkout_${Date.now()}.${ext}`;
 
-        if (!uploadError) {
-          const { data: publicUrlData } = supabaseAdmin.storage.from('attendance').getPublicUrl(fileName);
-          photoUrl = publicUrlData.publicUrl;
+            const { error: uploadError } = await supabaseAdmin
+              .storage
+              .from("attendance")
+              .upload(fileName, buffer, { contentType, upsert: true });
+
+            if (!uploadError) {
+              const { data: publicUrlData } = supabaseAdmin.storage
+                .from("attendance")
+                .getPublicUrl(fileName);
+              photoUrl = publicUrlData.publicUrl;
+            }
+          }
         }
       } catch (storageErr) {
         console.error("Gagal upload foto checkout:", storageErr);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Users, UserCheck, Clock, FileWarning, ClipboardList } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import AttendanceAvatar from "@/app/components/AttendanceAvatar";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState({ totalEmployees: 0, presentToday: 0, lateToday: 0, onLeave: 0 });
@@ -110,11 +111,11 @@ export default function AdminDashboard() {
                       )}
                     </td>
                     <td className="px-6 py-4">
-                      {att.check_in_photo ? (
-                        <img src={att.check_in_photo} alt="Selfie" className="w-10 h-10 rounded-lg object-cover bg-[#faf8f5]" />
-                      ) : (
-                        <span className="text-xs text-[#3e2723]/30">–</span>
-                      )}
+                      <AttendanceAvatar
+                        photoUrl={att.check_in_photo}
+                        name={att.users?.full_name}
+                        size="w-10 h-10"
+                      />
                     </td>
                     <td className="px-6 py-4 max-w-xs">
                       {att.work_update ? (

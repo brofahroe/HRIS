@@ -1,24 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { getAuthedUser, getBearerToken } from "@/lib/apiAuth";
-
-function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
-  const R = 6371; // Radius bumi dalam km
-  const dLat = (lat2 - lat1) * (Math.PI / 180);
-  const dLon = (lon2 - lon1) * (Math.PI / 180);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
-    Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-const OFFICE_LOCATIONS = [
-  { name: 'Galeri Batik', lat: -8.1728895, lng: 112.5507406 },
-  { name: 'Sanggar Batik', lat: -8.176151, lng: 112.548144 }
-];
-const MAX_RADIUS_KM = 0.1; // 100 meter
+import { findClosestOffice, MAX_RADIUS_METERS } from "@/lib/officeLocations";
 
 function normalizeNotes(prevNotes: string | null | undefined, totalHours: number | null) {
   let base = prevNotes || '';
@@ -53,19 +36,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Data koordinat tidak lengkap" }, { status: 400 });
     }
 
-    let minDistance = Infinity;
-    let closestOffice = '';
-    for (const office of OFFICE_LOCATIONS) {
-      const distance = calculateDistance(office.lat, office.lng, lat, lng);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestOffice = office.name;
-      }
-    }
+    // Validasi Jarak Lokasi (radius maksimal 50m)
+    const { minDistance, closestOffice, isWithinRadius } = findClosestOffice(lat, lng);
 
-    if (minDistance > MAX_RADIUS_KM) {
+    if (!isWithinRadius) {
       return NextResponse.json({
-        error: "Anda berada di luar radius kantor (Galeri & Sanggar)",
+        error: `Anda berada di luar radius kantor ${MAX_RADIUS_METERS} meter (Galeri & Sanggar)`,
         distance: `${(minDistance * 1000).toFixed(0)} meter dari ${closestOffice}`
       }, { status: 403 });
     }

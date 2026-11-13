@@ -9,8 +9,9 @@ Sistem Human Resource Information System (HRIS) modern yang dibangun sebagai pen
 - **Hosting**: Vercel
 
 ## Fitur Utama
+- **Progressive Web App (PWA)**: Dapat di-install di smartphone (Android & iOS) dan desktop (Chrome/Edge) layaknya aplikasi native, mendukung mode offline dengan halaman fallback, caching aset otomatis, dan notifikasi instalasi.
 - **Sistem Autentikasi**: Login aman dengan Supabase Auth.
-- **Dashboard Karyawan**: Check-In dan Check-Out (Absensi).
+- **Dashboard Karyawan**: Check-In dan Check-Out (Absensi) dengan verifikasi selfie dan GPS.
 - **Dashboard Admin**: Pengelolaan data karyawan, lembur, kasbon, dan slip gaji (Payroll).
 
 ## Cara Menjalankan Secara Lokal
